@@ -1,4 +1,4 @@
-pytorch
+torch
 einops==0.8.0
 scipy==1.13.0
 matplotlib==3.8.4
