@@ -9,7 +9,7 @@ class ReplayBuffer:
 
     def __init__(self, max_n_episodes, max_path_length, termination_penalty):
         self._dict = {
-            'path_lengths': np.zeros(max_n_episodes, dtype=np.int),
+            'path_lengths': np.zeros(max_n_episodes, dtype=np.int64),
         }
         self._count = 0
         self.max_n_episodes = max_n_episodes
@@ -62,7 +62,7 @@ class ReplayBuffer:
         # print(f'[ utils/mujoco ] Allocated {key} with size {shape}')
 
     def add_path(self, path):
-        path_length = len(path['observations'])
+        path_length = len(path['observation'])
         assert path_length <= self.max_path_length
 
         ## if first path added, set keys based on contents

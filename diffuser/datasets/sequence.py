@@ -20,7 +20,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         max_n_episodes=10000, termination_penalty=0, use_padding=True, seed=None):
         self.preprocess_fn = get_preprocess_fn(preprocess_fns, env)
         self.env = env = load_environment(env)
-        self.env.seed(seed)
+        #self.env.seed(seed)
         self.horizon = horizon
         self.max_path_length = max_path_length
         self.use_padding = use_padding
@@ -35,7 +35,8 @@ class SequenceDataset(torch.utils.data.Dataset):
         self.indices = self.make_indices(fields.path_lengths, horizon)
 
         self.observation_dim = fields.observations.shape[-1]
-        self.action_dim = fields.actions.shape[-1]
+        #self.action_dim = fields.actions.shape[-1]
+        self.action_dim =2
         self.fields = fields
         self.n_episodes = fields.n_episodes
         self.path_lengths = fields.path_lengths
@@ -49,10 +50,19 @@ class SequenceDataset(torch.utils.data.Dataset):
         '''
             normalize fields that will be predicted by the diffusion model
         '''
-        for key in keys:
-            array = self.fields[key].reshape(self.n_episodes*self.max_path_length, -1)
-            normed = self.normalizer(array, key)
-            self.fields[f'normed_{key}'] = normed.reshape(self.n_episodes, self.max_path_length, -1)
+        # for key in keys:
+        #     array = self.fields[key].reshape(self.n_episodes*self.max_path_length, -1)
+        #     normed = self.normalizer(array, key)
+        #     self.fields[f'normed_{key}'] = normed.reshape(self.n_episodes, self.max_path_length, -1)
+        print(self.fields)
+
+        array = self.fields.observations.reshape(self.n_episodes*self.max_path_length, -1)
+        normed = self.normalizer(array, 'observations')
+        self.fields[f'normed_observations'] = normed.reshape(self.n_episodes, self.max_path_length, -1)
+
+        array = self.fields.actions.reshape(self.n_episodes*self.max_path_length, -1)
+        normed = self.normalizer(array, 'actions')
+        self.fields[f'normed_actions'] = normed.reshape(self.n_episodes, self.max_path_length, -1)
 
     def make_indices(self, path_lengths, horizon):
         '''

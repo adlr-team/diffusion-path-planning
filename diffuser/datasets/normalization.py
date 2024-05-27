@@ -14,7 +14,7 @@ class DatasetNormalizer:
         dataset = flatten(dataset, path_lengths)
 
         self.observation_dim = dataset['observations'].shape[1]
-        self.action_dim = dataset['actions'].shape[1]
+        self.action_dim = 2
 
         if type(normalizer) == str:
             normalizer = eval(normalizer)
@@ -72,7 +72,8 @@ class PointMassDatasetNormalizer(DatasetNormalizer):
             reshaped[key] = val.reshape(-1, dim)
 
         self.observation_dim = reshaped['observations'].shape[1]
-        self.action_dim = reshaped['actions'].shape[1]
+        #self.action_dim = reshaped['actions'].shape[1]
+        self.action_dim = 2
 
         if type(normalizer) == str:
             normalizer = eval(normalizer)
