@@ -273,7 +273,8 @@ def plot2img(fig, remove_margins=True):
 MAZE_BOUNDS = {
     'maze2d-umaze-v1': (0, 5, 0, 5),
     'maze2d-medium-v1': (0, 8, 0, 8),
-    'maze2d-large-v1': (0, 9, 0, 12)
+    'maze2d-large-v1': (0, 9, 0, 12),
+    'PointMaze_Large-v3': (0, 9, 0, 12)
 }
 
 class MazeRenderer:
