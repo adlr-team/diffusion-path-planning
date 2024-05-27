@@ -328,7 +328,7 @@ class Maze2dRenderer(MazeRenderer):
         self.observation_dim = np.prod(self.env.observation_space.shape)
         self.action_dim = np.prod(self.env.action_space.shape)
         self.goal = None
-        self._background = self.env.maze_arr == 10
+        self._background = self.env.maze.maze_map == 10
         self._remove_margins = False
         self._extent = (0, 1, 1, 0)
 

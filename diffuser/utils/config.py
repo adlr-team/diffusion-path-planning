@@ -21,7 +21,7 @@ def import_class(_class):
 class Config(collections.abc.Mapping):
 
     def __init__(self, _class, verbose=True, savepath=None, device=None, **kwargs):
-        device = "cpu"
+        device = 'cpu' #'cuda:0'
         self._class = import_class(_class)
         self._device = device
         self._dict = {}
