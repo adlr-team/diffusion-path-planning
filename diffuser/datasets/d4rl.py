@@ -44,7 +44,9 @@ def load_environment(name):
 
 def get_dataset():
     ##Code from Minari documentation
-    dataset_name = "pointmaze-umaze-v1"
+
+    dataset_name = "pointmaze-umaze-v11"
+    print(f"dataset_name:{dataset_name}")
     total_steps = 10_000
 
     # continuing task => the episode doesn't terminate or truncate when reaching a goal
