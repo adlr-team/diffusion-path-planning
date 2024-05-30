@@ -1,7 +1,6 @@
 import pdb
 
 import einops
-import gym
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 

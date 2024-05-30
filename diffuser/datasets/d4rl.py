@@ -3,12 +3,11 @@ import os
 import pdb
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 
-import d4rl
 import gymnasium as gym
-import pdb
+import numpy as np
 from minari import DataCollector
-from .d4rl_adapter import PointMazeStepDataCallback, QIteration, WaypointController
 
+from .d4rl_adapter import PointMazeStepDataCallback, QIteration, WaypointController
 
 
 @contextmanager
@@ -24,7 +23,6 @@ def suppress_output():
 
 # with suppress_output():
 #     ## d4rl prints out a variety of warnings
-#     import d4rl
 
 # -----------------------------------------------------------------------------#
 # -------------------------------- general api --------------------------------#
@@ -44,16 +42,17 @@ def load_environment(name):
     return env
 
 
-
 def get_dataset():
     ##Code from Minari documentation
-    dataset_name = "pointmaze-umaze-v0"
+    dataset_name = "pointmaze-umaze-v1"
     total_steps = 10_000
 
     # continuing task => the episode doesn't terminate or truncate when reaching a goal
     # it will generate a new target. For this reason we set the maximum episode steps to
     # the desired size of our Minari dataset (evade truncation due to time limit)
-    env = gym.make("PointMaze_Medium-v3", continuing_task=True, max_episode_steps=total_steps)
+    env = gym.make(
+        "PointMaze_Medium-v3", continuing_task=True, max_episode_steps=total_steps
+    )
 
     # Data collector wrapper to save temporary data while stepping. Characteristics:
     #   * Custom StepDataCallback to add extra state information to 'infos' and divide dataset in different episodes by overridng
@@ -85,7 +84,7 @@ def get_dataset():
         author_email="rperezvicente@farama.org",
     )
 
-     #dataset = env.get_dataset()
+    # dataset = env.get_dataset()
 
     # if 'antmaze' in str(env).lower():
     #     ## the antmaze-v0 environments have a variety of bugs
@@ -96,6 +95,7 @@ def get_dataset():
     #     get_max_delta(dataset)
 
     return dataset
+
 
 # def sequence_dataset(dataset, env):
 #     #N = dataset['rewards'].shape[0]
@@ -199,8 +199,6 @@ def get_dataset():
 #     return episode
 
 
-
-
 def sequence_dataset(env, preprocess_fn):
     """
     Returns an iterator through trajectories.
@@ -220,7 +218,7 @@ def sequence_dataset(env, preprocess_fn):
     dataset = preprocess_fn(dataset)
 
     N = dataset[0].rewards.shape[0]
-    #N = dataset._data.total_episodes
+    # N = dataset._data.total_episodes
     data_ = collections.defaultdict(list)
 
     # The newer version of the dataset adds an explicit
@@ -247,26 +245,22 @@ def sequence_dataset(env, preprocess_fn):
     #     #dataset[i].observations
     #     # done_bool = bool(dataset['terminals'][i])
     #     done_bool = bool(dataset[episode_step].terminations[i])
-        
+
     #     final_timestep = (episode_step == env.max_episode_steps - 1)
 
     #     #for k in dataset:
-        
 
     #     if done_bool or final_timestep:
     #         print("heree")
     #         print(i)
     #         episode_step = 0
-            
-            
+
     #         episode_data = process_maze2d_episode(dataset[episode_step])
     #         yield episode_data
     #         data_ = collections.defaultdict(list)
     #         episode_data = {}
 
     #         episode_step += 1
-        
-
 
 
 # def process_maze2d_episode(episode):
@@ -284,33 +278,33 @@ def sequence_dataset(env, preprocess_fn):
 
 
 def process_maze2d_episode(episode):
-    '''
-        adds in `next_observations` field to episode
-    '''
-    #assert 'next_observations' not in episode
+    """
+    adds in `next_observations` field to episode
+    """
+    # assert 'next_observations' not in episode
     ep = {}
     length = len(episode.observations)
     next_observations = episode.observations["observation"][1:].copy()
     for key, val in episode.observations.items():
         if key == "observation":
-           ep["observations"] = val[:-1]
-           ep["observation"] = val[:-1]
+            ep["observations"] = val[:-1]
+            ep["observation"] = val[:-1]
         else:
             ep[key] = val[:-1]
-    ep['next_observations'] = next_observations
+    ep["next_observations"] = next_observations
     for attr, value in vars(episode).items():
-      if attr == "observations":
-        continue
-      elif attr == "terminations":
-        ep["terminals"] = value
-      elif attr == "truncations":
-        ep["timeouts"] = value
-      elif attr == "actions":
-        ep["actions"] = value
-      elif attr == "id" or attr == "seed" or attr == "total_timesteps" or "infos":
-        # do nothing
-        pass
-      else:
-        ep[attr] = value
+        if attr == "observations":
+            continue
+        elif attr == "terminations":
+            ep["terminals"] = value
+        elif attr == "truncations":
+            ep["timeouts"] = value
+        elif attr == "actions":
+            ep["actions"] = value
+        elif attr == "id" or attr == "seed" or attr == "total_timesteps" or "infos":
+            # do nothing
+            pass
+        else:
+            ep[attr] = value
 
     return ep

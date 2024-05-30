@@ -1,6 +1,6 @@
-from minari import DataCollector, StepDataCallback
 import numpy as np
-import gym
+from minari import DataCollector, StepDataCallback
+
 
 class PointMazeStepDataCallback(StepDataCallback):
     """Add environment state information to 'infos'.
@@ -19,13 +19,15 @@ class PointMazeStepDataCallback(StepDataCallback):
 
         step_data = super().__call__(env, obs, info, action, rew, terminated, truncated)
 
-        if step_data['infos']["success"]:
+        if step_data["infos"]["success"]:
             step_data["truncation"] = True
-        step_data['infos']["qpos"] = qpos
+        step_data["infos"]["qpos"] = qpos
         step_data["infos"]["qvel"] = qvel
         step_data["infos"]["goal"] = goal
 
         return step_data
+
+
 UP = 0
 DOWN = 1
 LEFT = 2
@@ -132,6 +134,7 @@ class QIteration:
         else:
             return True
 
+
 class WaypointController:
     """Agent controller to follow waypoints in the maze.
 
@@ -177,9 +180,9 @@ class WaypointController:
                     np.array(self.current_control_target_id)
                 )
             else:
-                self.waypoint_targets[
+                self.waypoint_targets[self.current_control_target_id] = (
                     self.current_control_target_id
-                ] = self.current_control_target_id
+                )
                 self.current_control_target_id = self.global_target_id
                 self.current_control_target_xy = self.global_target_xy
 
