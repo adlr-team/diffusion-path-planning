@@ -5,9 +5,10 @@ from contextlib import contextmanager, redirect_stderr, redirect_stdout
 
 import gymnasium as gym
 import numpy as np
-from minari import DataCollector
+from minari import DataCollector, list_local_datasets, load_dataset
 
-from .d4rl_adapter import PointMazeStepDataCallback, QIteration, WaypointController
+from .d4rl_adapter import (PointMazeStepDataCallback, QIteration,
+                           WaypointController)
 
 
 @contextmanager
@@ -43,58 +44,57 @@ def load_environment(name):
 
 
 def get_dataset():
+    
     ##Code from Minari documentation
-
-    dataset_name = "pointmaze-umaze-v11"
-    print(f"dataset_name:{dataset_name}")
-    total_steps = 10_000
+    dataset_name = "pointmaze-umaze-v0"
+    print(f"Dataset_name:{dataset_name}")
+    # Define steps
+    total_steps = 100000
 
     # continuing task => the episode doesn't terminate or truncate when reaching a goal
     # it will generate a new target. For this reason we set the maximum episode steps to
     # the desired size of our Minari dataset (evade truncation due to time limit)
+    # Continuing task will always generate a new goal if the previous one is reached
     env = gym.make(
         "PointMaze_Medium-v3", continuing_task=True, max_episode_steps=total_steps
     )
 
-    # Data collector wrapper to save temporary data while stepping. Characteristics:
-    #   * Custom StepDataCallback to add extra state information to 'infos' and divide dataset in different episodes by overridng
-    #     truncation value to True when target is reached
-    #   * Record the 'info' value of every step
-    collector_env = DataCollector(
-        env, step_data_callback=PointMazeStepDataCallback, record_infos=True
-    )
+    # Load exisiting datasets:
+    if dataset_name in list_local_datasets():
+        print("dataset exists!")
+        dataset = load_dataset(dataset_name)
+    else:
+        dataset = None
 
-    obs, _ = collector_env.reset(seed=123)
-
-    waypoint_controller = WaypointController(maze=env.maze)
-
-    for n_step in range(int(total_steps)):
-        action = waypoint_controller.compute_action(obs)
-        # Add some noise to each step action
-        action += np.random.randn(*action.shape) * 0.5
-        action = np.clip(
-            action, env.action_space.low, env.action_space.high, dtype=np.float32
+        # Data collector wrapper to save temporary data while stepping. Characteristics:
+        #   * Custom StepDataCallback to add extra state information to 'infos' and divide dataset in different episodes by overridng
+        #     truncation value to True when target is reached
+        #   * Record the 'info' value of every step
+        collector_env = DataCollector(
+            env, step_data_callback=PointMazeStepDataCallback, record_infos=True
         )
 
-        obs, rew, terminated, truncated, info = collector_env.step(action)
+        obs, _ = collector_env.reset(seed=123)
 
-    dataset = collector_env.create_dataset(
-        dataset_id=dataset_name,
-        algorithm_name="QIteration",
-        code_permalink="https://github.com/Farama-Foundation/Minari/blob/main/docs/tutorials/dataset_creation/point_maze_dataset.py",
-        author="Rodrigo Perez-Vicente",
-        author_email="rperezvicente@farama.org",
-    )
+        waypoint_controller = WaypointController(maze=env.maze)
 
-    # dataset = env.get_dataset()
+        for n_step in range(int(total_steps)):
+            action = waypoint_controller.compute_action(obs)
+            # Add some noise to each step action
+            action += np.random.randn(*action.shape) * 0.5
+            action = np.clip(
+                action, env.action_space.low, env.action_space.high, dtype=np.float32
+            )
 
-    # if 'antmaze' in str(env).lower():
-    #     ## the antmaze-v0 environments have a variety of bugs
-    #     ## involving trajectory segmentation, so manually reset
-    #     ## the terminal and timeout fields
-    #     dataset = antmaze_fix_timeouts(dataset)
-    #     dataset = antmaze_scale_rewards(dataset)
-    #     get_max_delta(dataset)
+            obs, rew, terminated, truncated, info = collector_env.step(action)
+
+        dataset = collector_env.create_dataset(
+            dataset_id=dataset_name,
+            algorithm_name="QIteration",
+            code_permalink="https://github.com/Farama-Foundation/Minari/blob/main/docs/tutorials/dataset_creation/point_maze_dataset.py",
+            author="Rodrigo Perez-Vicente",
+            author_email="rperezvicente@farama.org",
+        )
 
     return dataset
 
