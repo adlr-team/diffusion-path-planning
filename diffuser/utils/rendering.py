@@ -285,6 +285,7 @@ MAZE_BOUNDS = {
     "maze2d-medium-v1": (0, 8, 0, 8),
     "maze2d-large-v1": (0, 9, 0, 12),
     "PointMaze_Large-v3": (0, 9, 0, 12),
+    "PointMaze_Medium-v3": (0, 8, 0, 8),
 }
 
 
