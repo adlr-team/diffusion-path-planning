@@ -49,7 +49,7 @@ def get_dataset():
     dataset_name = "pointmaze-umaze-v0"
     print(f"Dataset_name:{dataset_name}")
     # Define steps
-    total_steps = 100000
+    total_steps = 10000
 
     # continuing task => the episode doesn't terminate or truncate when reaching a goal
     # it will generate a new target. For this reason we set the maximum episode steps to
