@@ -37,6 +37,8 @@ def load_environment(name):
         return name
     with suppress_output():
         wrapped_env = gym.make(name)
+        #TODO: I am not sure if this is correct here
+        wrapped_env.reset()
     env = wrapped_env.unwrapped
     env.max_episode_steps = wrapped_env._max_episode_steps
     env.name = name
@@ -49,7 +51,7 @@ def get_dataset():
     dataset_name = "pointmaze-umaze-v0"
     print(f"Dataset_name:{dataset_name}")
     # Define steps
-    total_steps = 1000
+    total_steps = 10000
 
     # continuing task => the episode doesn't terminate or truncate when reaching a goal
     # it will generate a new target. For this reason we set the maximum episode steps to
@@ -58,6 +60,7 @@ def get_dataset():
     env = gym.make(
         "PointMaze_Medium-v3", continuing_task=True, max_episode_steps=total_steps
     )
+    
 
     # Load exisiting datasets:
     if dataset_name in list_local_datasets():

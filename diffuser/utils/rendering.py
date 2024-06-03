@@ -300,6 +300,7 @@ class MazeRenderer:
         self._remove_margins = False
         self._extent = (0, 1, 1, 0)
         self._background = env.maze.maze_map
+
         
         self._background = [[0.3 if x == 'r' else x for x in row] for row in self._background]
         self._background = [[0.8 if x == 'g' else x for x in row] for row in self._background]
@@ -309,6 +310,13 @@ class MazeRenderer:
 
         # Define the extent to center the plot at (0, 0)
         self.extent = [-cols/2, cols/2, -rows/2, rows/2]
+
+
+        # Have to apply 0 input to get the current state
+        action = np.array([[0, 0]])
+        
+        
+        self.goal = self.env.unwrapped.goal
 
 
     def renders(self, observations, conditions=None, title=None):
@@ -328,6 +336,14 @@ class MazeRenderer:
         colors = plt.cm.jet(np.linspace(0, 1, path_length))
         plt.plot(observations[:, 0], observations[:, 1], c="black", zorder=10)
         plt.scatter(observations[:, 0], observations[:, 1], c=colors, zorder=20)
+        print("The last observation", observations[-1])
+
+        # Plot the goal as a red ball
+        # Have to apply 0 input to get the current state
+        plt.scatter(self.goal[0], self.goal[1], c="green", zorder=20)
+        
+
+
         plt.axis("on")
         plt.title(title)
         img = plot2img(fig, remove_margins=self._remove_margins)
@@ -382,6 +398,12 @@ class Maze2dRenderer(MazeRenderer):
 
         # Define the extent to center the plot at (0, 0)
         self.extent = [-cols/2, cols/2, -rows/2, rows/2]
+
+        action = np.array([[0, 0]])
+        print(action)
+        
+        self.goal = self.env.unwrapped.goal
+        print(self.goal)
 
     # def renders(self, observations, conditions=None, **kwargs):
     #     bounds = MAZE_BOUNDS[self.env_name]
