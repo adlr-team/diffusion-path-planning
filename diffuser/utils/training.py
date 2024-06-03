@@ -6,6 +6,8 @@ import einops
 import numpy as np
 import torch
 
+import wandb
+
 from .arrays import apply_dict, batch_to_device, to_device, to_np
 from .cloud import sync_logs
 from .timer import Timer
@@ -120,12 +122,14 @@ class Trainer(object):
 
         timer = Timer()
         for step in range(n_train_steps):
+            wandb.log({"Training_steps": step})
             for i in range(self.gradient_accumulate_every):
                 batch = next(self.dataloader)
                 batch = batch_to_device(batch)
 
                 loss, infos = self.model.loss(*batch)
                 loss = loss / self.gradient_accumulate_every
+                wandb.log({"Model Loss": loss})
                 loss.backward()
 
             self.optimizer.step()
@@ -144,14 +148,15 @@ class Trainer(object):
                 )
                 print(f"{self.step}: {loss:8.4f} | {infos_str} | t: {timer():8.4f}")
 
-            if self.step == 0 and self.sample_freq:
-                self.render_reference(self.n_reference)
+            # if self.step == 0 and self.sample_freq:
+            #     self.render_reference(self.n_reference)
 
-            if self.sample_freq and self.step % self.sample_freq == 0:
-                print(f"Step: {self.step} - Rendering samples")
-                self.render_samples(n_samples=self.n_samples)
+            # if self.sample_freq and self.step % self.sample_freq == 0:
+            #     print(f"Step: {self.step} - Rendering samples")
+            #     self.render_samples(n_samples=self.n_samples)
 
             self.step += 1
+        wandb.log({"Time per episode": timer()})
 
     def save(self, epoch):
         """

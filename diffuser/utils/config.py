@@ -72,3 +72,6 @@ class Config(collections.abc.Mapping):
         # if self._device:
         #     instance = instance.to(self._device)
         return instance
+
+    def to_dict(self):
+        return self.__dict__
