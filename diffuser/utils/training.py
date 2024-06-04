@@ -84,12 +84,15 @@ class Trainer(object):
                 batch_size=train_batch_size,
                 num_workers=0,
                 shuffle=True,
-                pin_memory=True,
+                pin_memory=False,
+                generator=torch.Generator(device='cuda'),
+
             )
         )
         self.dataloader_vis = cycle(
             torch.utils.data.DataLoader(
-                self.dataset, batch_size=1, num_workers=0, shuffle=True, pin_memory=True
+                self.dataset, batch_size=1, num_workers=0, shuffle=True, pin_memory=False, generator=torch.Generator(device='cuda'),
+
             )
         )
         self.renderer = renderer
@@ -118,6 +121,7 @@ class Trainer(object):
 
     def train(self, n_train_steps):
 
+        # self.model.to_device("cuda")
         timer = Timer()
         for step in range(n_train_steps):
             for i in range(self.gradient_accumulate_every):
@@ -196,7 +200,9 @@ class Trainer(object):
                 batch_size=batch_size,
                 num_workers=0,
                 shuffle=True,
-                pin_memory=True,
+                pin_memory=False,
+                generator=torch.Generator(device='cuda'),
+
             )
         )
         batch = dataloader_tmp.__next__()
@@ -232,9 +238,9 @@ class Trainer(object):
 
             ## get a single datapoint
             batch = self.dataloader_vis.__next__()
-            conditions = to_device(batch.conditions, "cpu")
+            conditions = to_device(batch.conditions, "cuda")
 
-            # conditions = to_device(batch.conditions, "cuda:0")
+            # conditions = to_device(batch.conditions, "cuda")
 
             ## repeat each item in conditions `n_samples` times
             conditions = apply_dict(
