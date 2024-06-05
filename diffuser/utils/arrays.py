@@ -5,7 +5,7 @@ import numpy as np
 import torch
 
 DTYPE = torch.float
-DEVICE = "cpu"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 # -----------------------------------------------------------------------------#
 # ------------------------------ numpy <--> torch -----------------------------#

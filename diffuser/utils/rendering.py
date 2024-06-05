@@ -285,6 +285,7 @@ MAZE_BOUNDS = {
     "maze2d-medium-v1": (0, 8, 0, 8),
     "maze2d-large-v1": (0, 9, 0, 12),
     "PointMaze_Large-v3": (0, 9, 0, 12),
+    "PointMaze_Medium-v3": (0, 8, 0, 8),
 }
 
 
@@ -293,37 +294,69 @@ class MazeRenderer:
     def __init__(self, env):
         if type(env) is str:
             env = load_environment(env)
-        self._config = env._config
-        self._background = self._config != " "
+        #self._config = env._config
+        #self._background = self._config != " "
+        self._background = False
         self._remove_margins = False
         self._extent = (0, 1, 1, 0)
+        self._background = env.maze.maze_map
+
+        
+        self._background = [[0.3 if x == 'r' else x for x in row] for row in self._background]
+        self._background = [[0.8 if x == 'g' else x for x in row] for row in self._background]
+        
+        background_array = np.array(self._background)
+        rows, cols = background_array.shape
+
+        # Define the extent to center the plot at (0, 0)
+        self.extent = [-cols/2, cols/2, -rows/2, rows/2]
+
+
+        # Have to apply 0 input to get the current state
+        action = np.array([[0, 0]])
+        
+        
+        self.goal = self.env.unwrapped.goal
+
 
     def renders(self, observations, conditions=None, title=None):
         plt.clf()
         fig = plt.gcf()
-        fig.set_size_inches(5, 5)
+        #fig.set_size_inches(5, 5)
         plt.imshow(
-            np.array((self._background)) * 0.5,
-            extent=self._extent,
+            np.array((self._background)),
+            extent=self.extent,
             cmap=plt.cm.binary,
-            vmin=0,
-            vmax=1,
+            # vmin=0,
+            # vmax=1,
         )
 
         path_length = len(observations)
+        #observations = observations.reshape(len(observations), -1)
         colors = plt.cm.jet(np.linspace(0, 1, path_length))
-        plt.plot(observations[:, 1], observations[:, 0], c="black", zorder=10)
-        plt.scatter(observations[:, 1], observations[:, 0], c=colors, zorder=20)
-        plt.axis("off")
+        plt.plot(observations[:, 0], observations[:, 1], c="black", zorder=10)
+        plt.scatter(observations[:, 0], observations[:, 1], c=colors, zorder=20)
+        print("The last observation", observations[-1])
+
+        # Plot the goal as a red ball
+        # Have to apply 0 input to get the current state
+        plt.scatter(self.goal[0], self.goal[1], c="green", zorder=20)
+        
+
+
+        plt.axis("on")
         plt.title(title)
         img = plot2img(fig, remove_margins=self._remove_margins)
+        plt.show()
         return img
 
-    def composite(self, savepath, paths, ncol=5, **kwargs):
+    def composite(self, savepath, paths, ncol=1, **kwargs):
         """
         savepath : str
         observations : [ n_paths x horizon x 2 ]
         """
+        print(paths.shape)
+        print(ncol)
         assert (
             len(paths) % ncol == 0
         ), "Number of paths must be divisible by number of columns"
@@ -350,27 +383,45 @@ class Maze2dRenderer(MazeRenderer):
         self.observation_dim = np.prod(self.env.observation_space.shape)
         self.action_dim = np.prod(self.env.action_space.shape)
         self.goal = None
-        self._background = self.env.maze.maze_map
+        # self._background = self.env.maze.maze_map
         self._remove_margins = False
-        self._extent = (0, 1, 1, 0)
+        # self._extent = (0, 1, 1, 0)
 
-    def renders(self, observations, conditions=None, **kwargs):
-        bounds = MAZE_BOUNDS[self.env_name]
 
-        observations = observations + 0.5
-        if len(bounds) == 2:
-            _, scale = bounds
-            observations /= scale
-        elif len(bounds) == 4:
-            _, iscale, _, jscale = bounds
-            observations[:, 0] /= iscale
-            observations[:, 1] /= jscale
-        else:
-            raise RuntimeError(f"Unrecognized bounds for {self.env_name}: {bounds}")
+        self._background = self.env.maze.maze_map
+        
+        self._background = [[0.3 if x == 'r' else x for x in row] for row in self._background]
+        self._background = [[0.8 if x == 'g' else x for x in row] for row in self._background]
+        
+        background_array = np.array(self._background)
+        rows, cols = background_array.shape
 
-        if conditions is not None:
-            conditions /= scale
-        return super().renders(observations, conditions, **kwargs)
+        # Define the extent to center the plot at (0, 0)
+        self.extent = [-cols/2, cols/2, -rows/2, rows/2]
+
+        action = np.array([[0, 0]])
+        print(action)
+        
+        self.goal = self.env.unwrapped.goal
+        print(self.goal)
+
+    # def renders(self, observations, conditions=None, **kwargs):
+    #     bounds = MAZE_BOUNDS[self.env_name]
+
+    #     observations = observations + 0.5
+    #     if len(bounds) == 2:
+    #         _, scale = bounds
+    #         observations /= scale
+    #     elif len(bounds) == 4:
+    #         _, iscale, _, jscale = bounds
+    #         observations[:, 0] /= iscale
+    #         observations[:, 1] /= jscale
+    #     else:
+    #         raise RuntimeError(f"Unrecognized bounds for {self.env_name}: {bounds}")
+
+    #     if conditions is not None:
+    #         conditions /= scale
+    #     return super().renders(observations, conditions, **kwargs)
 
 
 # -----------------------------------------------------------------------------#
