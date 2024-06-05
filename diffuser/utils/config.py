@@ -80,8 +80,8 @@ class Config(collections.abc.Mapping):
 
     def __call__(self, *args, **kwargs):
         instance = self._class(*args, **kwargs, **self._dict)
-        if self._device:
-            instance = instance.to(self._device)
+        # if self._device:
+        #     instance = instance.to(self._device)
         return instance
 
     def to_dict(self):
@@ -283,7 +283,7 @@ def get_params():
     parser.add_argument(
         "--sample_freq",
         type=int,
-        default=10,
+        default=1000,
         help="Frequency of sampling during training",
     )
     parser.add_argument(
