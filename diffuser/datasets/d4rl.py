@@ -48,7 +48,7 @@ def load_environment(name):
 def get_dataset():
     
     ##Code from Minari documentation
-    dataset_name = "pointmaze-umaze-v0"
+    dataset_name = "pointmaze-medium-v2"
     print(f"Dataset_name:{dataset_name}")
     # Define steps
     total_steps = 10000
