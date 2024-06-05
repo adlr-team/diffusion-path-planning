@@ -341,8 +341,10 @@ class MazeRenderer:
 
         # Plot the goal as a red ball
         # Have to apply 0 input to get the current state
-        plt.scatter(self.goal[0], self.goal[1], c="black", marker="*", zorder=20)
-        plt.scatter(self.starting[0], self.starting[1], c="black", marker="D", zorder=20)
+        observation_size = plt.scatter(observations[:, 0], observations[:, 1]).get_sizes()[0]
+        plt.scatter(self.goal[0], self.goal[1], c="green", marker="*", s=4*observation_size)
+        plt.scatter(self.starting[0], self.starting[1], c="black", marker="D", s=4*observation_size)
+
         #plt.scatter(observations[-1, 0], observations[-1, 1], c="red", marker="D")
         
 
@@ -407,6 +409,8 @@ class Maze2dRenderer(MazeRenderer):
         
         self.goal = self.env.unwrapped.goal
         print(self.goal)
+
+        self.starting = self.env.unwrapped.point_env.init_qpos[:2] 
 
     # def renders(self, observations, conditions=None, **kwargs):
     #     bounds = MAZE_BOUNDS[self.env_name]
