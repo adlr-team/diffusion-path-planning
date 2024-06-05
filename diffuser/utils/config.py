@@ -7,7 +7,6 @@ import socket
 from pathlib import Path
 
 import numpy as np
-import setproctitle
 import torch
 
 import wandb
@@ -142,7 +141,7 @@ def get_params():
         help="Whether to use padding",
     )
     parser.add_argument(
-        "--max_path_length", type=int, default=5000000, help="Maximum path length"
+        "--max_path_length", type=int, default=10000, help="Maximum path length"
     )
     parser.add_argument(
         "--user_name",
@@ -200,7 +199,7 @@ def get_params():
     parser.add_argument(
         "--cuda",
         action="store_true",
-        default=False,
+        default=True,
         help="Whether to use padding",
     )
 
@@ -288,7 +287,7 @@ def get_params():
         help="Frequency of sampling during training",
     )
     parser.add_argument(
-        "--save_freq", type=int, default=50, help="Frequency of saving checkpoints"
+        "--save_freq", type=int, default=500, help="Frequency of saving checkpoints"
     )
     parser.add_argument(
         "--label_freq",

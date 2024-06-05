@@ -47,6 +47,7 @@ class Trainer(object):
         diffusion_model,
         dataset,
         renderer,
+        device,
         ema_decay=0.995,
         train_batch_size=32,
         train_lr=2e-5,
@@ -62,7 +63,6 @@ class Trainer(object):
         n_reference=8,
         n_samples=2,
         bucket=None,
-        device="cpu",
     ):
         super().__init__()
         self.model = diffusion_model
@@ -79,7 +79,7 @@ class Trainer(object):
 
         self.batch_size = train_batch_size
         self.gradient_accumulate_every = gradient_accumulate_every
-
+        self.device = device
         self.dataset = dataset
         self.dataloader = cycle(
             torch.utils.data.DataLoader(
@@ -88,7 +88,7 @@ class Trainer(object):
                 num_workers=0,
                 shuffle=True,
                 pin_memory=False,
-                generator=torch.Generator(device=device),
+                generator=torch.Generator(device="cpu"),
             )
         )
         self.dataloader_vis = cycle(
@@ -98,15 +98,15 @@ class Trainer(object):
                 num_workers=0,
                 shuffle=True,
                 pin_memory=False,
-                generator=torch.Generator(device=device),
+                generator=torch.Generator(device="cpu"),
             )
         )
         self.renderer = renderer
+
         self.optimizer = torch.optim.Adam(diffusion_model.parameters(), lr=train_lr)
 
         self.logdir = results_folder
         self.bucket = bucket
-        self.device = device
         self.n_reference = n_reference
         self.n_samples = n_samples
 
@@ -128,13 +128,12 @@ class Trainer(object):
 
     def train(self, n_train_steps):
 
-        # self.model.to_device("cuda")
         timer = Timer()
         for step in range(n_train_steps):
             wandb.log({"Training_steps": step})
             for i in range(self.gradient_accumulate_every):
                 batch = next(self.dataloader)
-                batch = batch_to_device(batch)
+                batch = batch_to_device(batch,self.device)
 
                 loss, infos = self.model.loss(*batch)
                 loss = loss / self.gradient_accumulate_every
@@ -148,9 +147,10 @@ class Trainer(object):
                 self.step_ema()
 
             if self.step % self.save_freq == 0:
-                print(self.step)
+                label = self.step
+                print(f'Self_step:{self.step}')
                 print(f"Label_freq:{self.label_freq}")
-                label = self.step // self.label_freq * self.label_freq
+                print(f"Label:{label}")
                 self.save(label)
 
             if self.step % self.log_freq == 0:
@@ -250,9 +250,6 @@ class Trainer(object):
             ## get a single datapoint
             batch = self.dataloader_vis.__next__()
             conditions = to_device(batch.conditions, self.device)
-
-            # conditions = to_device(batch.conditions, "cuda")
-
             ## repeat each item in conditions `n_samples` times
             conditions = apply_dict(
                 einops.repeat,
