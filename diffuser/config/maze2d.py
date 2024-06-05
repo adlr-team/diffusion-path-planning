@@ -67,11 +67,11 @@ base = {
         "n_reference": 50,
         "n_samples": 10,
         "bucket": None,
-        "device": "cpu",
+        "device": "cuda:0",
     },
     "plan": {
         "batch_size": 1,
-        "device": "cpu",
+        "device": "cuda:0",
         ## diffusion model
         "horizon": 256,
         "n_diffusion_steps": 256,

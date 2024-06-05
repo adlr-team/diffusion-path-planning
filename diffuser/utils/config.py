@@ -26,7 +26,7 @@ def import_class(_class):
 class Config(collections.abc.Mapping):
 
     def __init__(self, _class, verbose=True, savepath=None, device=None, **kwargs):
-        device = "cpu"  #'cuda:0'
+        device = 'cuda:0'  #'cuda:0'
         self._class = import_class(_class)
         self._device = device
         self._dict = {}
@@ -69,6 +69,6 @@ class Config(collections.abc.Mapping):
 
     def __call__(self, *args, **kwargs):
         instance = self._class(*args, **kwargs, **self._dict)
-        # if self._device:
-        #     instance = instance.to(self._device)
+        if self._device:
+            instance = instance.to(self._device)
         return instance
