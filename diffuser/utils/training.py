@@ -120,6 +120,7 @@ class Trainer(object):
         if self.step < self.step_start_ema:
             self.reset_parameters()
             return
+        self.ema_model.to("cuda")
         self.ema.update_model_average(self.ema_model, self.model)
 
     # -----------------------------------------------------------------------------#
@@ -148,9 +149,6 @@ class Trainer(object):
 
             if self.step % self.save_freq == 0:
                 label = self.step
-                print(f'Self_step:{self.step}')
-                print(f"Label_freq:{self.label_freq}")
-                print(f"Label:{label}")
                 self.save(label)
 
             if self.step % self.log_freq == 0:
@@ -159,12 +157,12 @@ class Trainer(object):
                 )
                 print(f"{self.step}: {loss:8.4f} | {infos_str} | t: {timer():8.4f}")
 
-            # if self.step == 0 and self.sample_freq:
-            #     self.render_reference(self.n_reference)
+            if self.step == 0 and self.sample_freq:
+                self.render_reference(self.n_reference)
 
-            # if self.sample_freq and self.step % self.sample_freq == 0:
-            #     print(f"Step: {self.step} - Rendering samples")
-            #     self.render_samples(n_samples=self.n_samples)
+            if self.sample_freq and self.step % self.sample_freq == 0 and self.step % 1000 == 0:
+                print(f"Step: {self.step} - Rendering samples")
+                self.render_samples(n_samples=self.n_samples)
 
             self.step += 1
         wandb.log({"Time per episode": timer()})
@@ -213,7 +211,7 @@ class Trainer(object):
                 num_workers=0,
                 shuffle=True,
                 pin_memory=False,
-                generator=torch.Generator(device=self.device),
+                generator=torch.Generator(device="cpu"),
             )
         )
         batch = dataloader_tmp.__next__()
@@ -241,7 +239,7 @@ class Trainer(object):
         savepath = os.path.join(self.logdir, f"_sample-reference.png")
         self.renderer.composite(savepath, observations)
 
-    def render_samples(self, batch_size=2, n_samples=1):
+    def render_samples(self, batch_size=1, n_samples=1):
         """
         renders samples from (ema) diffusion model
         """
