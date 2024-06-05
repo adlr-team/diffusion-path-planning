@@ -4,7 +4,7 @@ import torch
 import pdb
 
 DTYPE = torch.float
-DEVICE = 'cuda:0'
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 #-----------------------------------------------------------------------------#
 #------------------------------ numpy <--> torch -----------------------------#

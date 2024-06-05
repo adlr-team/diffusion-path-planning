@@ -1,6 +1,7 @@
 import socket
 
 from diffuser.utils import watch
+import torch
 
 # ------------------------ base ------------------------#
 
@@ -67,11 +68,11 @@ base = {
         "n_reference": 50,
         "n_samples": 10,
         "bucket": None,
-        "device": "cuda:0",
+        "device": "cuda" if torch.cuda.is_available() else "cpu",
     },
     "plan": {
         "batch_size": 1,
-        "device": "cuda:0",
+        "device": "cuda" if torch.cuda.is_available() else "cpu",
         ## diffusion model
         "horizon": 256,
         "n_diffusion_steps": 256,

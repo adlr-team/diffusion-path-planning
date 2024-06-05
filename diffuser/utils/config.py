@@ -2,7 +2,7 @@ import collections
 import importlib
 import os
 import pickle
-
+import torch
 
 def import_class(_class):
     if type(_class) is not str:
@@ -26,7 +26,7 @@ def import_class(_class):
 class Config(collections.abc.Mapping):
 
     def __init__(self, _class, verbose=True, savepath=None, device=None, **kwargs):
-        device = 'cuda:0'  #'cuda:0'
+        device = "cuda" if torch.cuda.is_available() else "cpu"  #'cuda:0'
         self._class = import_class(_class)
         self._device = device
         self._dict = {}
