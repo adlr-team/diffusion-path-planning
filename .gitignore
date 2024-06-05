@@ -1,3 +1,4 @@
 *.hd5f
 *.pkl
 *.pyc
+wandb/

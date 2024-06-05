@@ -62,6 +62,7 @@ class Trainer(object):
         n_reference=8,
         n_samples=2,
         bucket=None,
+        device="cpu",
     ):
         super().__init__()
         self.model = diffusion_model
@@ -87,14 +88,17 @@ class Trainer(object):
                 num_workers=0,
                 shuffle=True,
                 pin_memory=False,
-                generator=torch.Generator(device='cuda'),
-
+                generator=torch.Generator(device=device),
             )
         )
         self.dataloader_vis = cycle(
             torch.utils.data.DataLoader(
-                self.dataset, batch_size=1, num_workers=0, shuffle=True, pin_memory=False, generator=torch.Generator(device='cuda'),
-
+                self.dataset,
+                batch_size=1,
+                num_workers=0,
+                shuffle=True,
+                pin_memory=False,
+                generator=torch.Generator(device=device),
             )
         )
         self.renderer = renderer
@@ -102,6 +106,7 @@ class Trainer(object):
 
         self.logdir = results_folder
         self.bucket = bucket
+        self.device = device
         self.n_reference = n_reference
         self.n_samples = n_samples
 
@@ -143,6 +148,8 @@ class Trainer(object):
                 self.step_ema()
 
             if self.step % self.save_freq == 0:
+                print(self.step)
+                print(f"Label_freq:{self.label_freq}")
                 label = self.step // self.label_freq * self.label_freq
                 self.save(label)
 
@@ -206,8 +213,7 @@ class Trainer(object):
                 num_workers=0,
                 shuffle=True,
                 pin_memory=False,
-                generator=torch.Generator(device='cuda'),
-
+                generator=torch.Generator(device=self.device),
             )
         )
         batch = dataloader_tmp.__next__()
@@ -243,7 +249,7 @@ class Trainer(object):
 
             ## get a single datapoint
             batch = self.dataloader_vis.__next__()
-            conditions = to_device(batch.conditions, "cuda")
+            conditions = to_device(batch.conditions, self.device)
 
             # conditions = to_device(batch.conditions, "cuda")
 
