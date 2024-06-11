@@ -311,16 +311,14 @@ class MazeRenderer:
         # Define the extent to center the plot at (0, 0)
         self.extent = [-cols/2, cols/2, -rows/2, rows/2]
 
-
-        # Have to apply 0 input to get the current state
-        action = np.array([[0, 0]])
-        
         
         self.goal = self.env.unwrapped.goal
         self.starting = self.env.unwrapped.point_env.init_qpos[:2] 
+        print("The goal in rendering is", self.goal)
+        print("The starting point in rendering is", self.starting)
 
 
-    def renders(self, observations, conditions=None, title=None):
+    def renders(self, env, observations, conditions=None, title=None):
         plt.clf()
         fig = plt.gcf()
         #fig.set_size_inches(5, 5)
@@ -332,6 +330,9 @@ class MazeRenderer:
             # vmax=1,
         )
 
+        goal = env.unwrapped.goal
+        starting = env.unwrapped.point_env.init_qpos[:2] 
+
         path_length = len(observations)
         #observations = observations.reshape(len(observations), -1)
         colors = plt.cm.jet(np.linspace(0, 1, path_length))
@@ -339,11 +340,14 @@ class MazeRenderer:
         plt.scatter(observations[:, 0], observations[:, 1], c=colors, zorder=20)
         print("The last observation", observations[-1])
 
+        print("Goal in rendering:", goal)
+        print("Starting point in rendering:", starting)
+
         # Plot the goal as a red ball
         # Have to apply 0 input to get the current state
         observation_size = plt.scatter(observations[:, 0], observations[:, 1]).get_sizes()[0]
-        plt.scatter(self.goal[0], self.goal[1], c="green", marker="*", s=4*observation_size)
-        plt.scatter(self.starting[0], self.starting[1], c="black", marker="D", s=4*observation_size)
+        plt.scatter(goal[0], goal[1], c="green", marker="*", s=4*observation_size)
+        plt.scatter(starting[0], starting[1], c="black", marker="D", s=4*observation_size)
 
         #plt.scatter(observations[-1, 0], observations[-1, 1], c="red", marker="D")
         
@@ -355,7 +359,7 @@ class MazeRenderer:
         plt.show()
         return img
 
-    def composite(self, savepath, paths, ncol=1, **kwargs):
+    def composite(self, savepath, paths, env=None, ncol=1, **kwargs):
         """
         savepath : str
         observations : [ n_paths x horizon x 2 ]
@@ -368,7 +372,7 @@ class MazeRenderer:
 
         images = []
         for path, kw in zipkw(paths, **kwargs):
-            img = self.renders(*path, **kw)
+            img = self.renders(env, *path, **kw)
             images.append(img)
         images = np.stack(images, axis=0)
 
@@ -412,6 +416,7 @@ class Maze2dRenderer(MazeRenderer):
 
         self.starting = self.env.unwrapped.point_env.init_qpos[:2] 
 
+        
     # def renders(self, observations, conditions=None, **kwargs):
     #     bounds = MAZE_BOUNDS[self.env_name]
 
