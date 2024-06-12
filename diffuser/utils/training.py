@@ -7,12 +7,11 @@ import numpy as np
 import torch
 
 import wandb
+from diffuser.datasets.d4rl import load_environment
 
 from .arrays import apply_dict, batch_to_device, to_device, to_np
 from .cloud import sync_logs
 from .timer import Timer
-
-from diffuser.datasets.d4rl import load_environment
 
 
 def cycle(dl):
@@ -63,7 +62,7 @@ class Trainer(object):
         label_freq=100000,
         save_parallel=False,
         results_folder="./results",
-        n_reference=8,
+        n_reference=1,
         n_samples=2,
         bucket=None,
     ):
@@ -72,7 +71,7 @@ class Trainer(object):
         self.ema = EMA(ema_decay)
         self.ema_model = copy.deepcopy(self.model)
         self.update_ema_every = update_ema_every
-        self.name =name
+        self.name = name
         self.step_start_ema = step_start_ema
         self.log_freq = log_freq
         self.sample_freq = sample_freq
@@ -88,9 +87,9 @@ class Trainer(object):
             torch.utils.data.DataLoader(
                 self.dataset,
                 batch_size=train_batch_size,
-                num_workers=0,
+                num_workers=8,
                 shuffle=True,
-                pin_memory=False,
+                pin_memory=True,
                 generator=torch.Generator(device="cpu"),
             )
         )
@@ -98,9 +97,9 @@ class Trainer(object):
             torch.utils.data.DataLoader(
                 self.dataset,
                 batch_size=1,
-                num_workers=0,
+                num_workers=8,
                 shuffle=True,
-                pin_memory=False,
+                pin_memory=True,
                 generator=torch.Generator(device="cpu"),
             )
         )
@@ -137,7 +136,8 @@ class Trainer(object):
             wandb.log({"Training_steps": step})
             for i in range(self.gradient_accumulate_every):
                 batch = next(self.dataloader)
-                batch = batch_to_device(batch,self.device)
+
+                batch = batch_to_device(batch, self.device)
 
                 loss, infos = self.model.loss(*batch)
                 loss = loss / self.gradient_accumulate_every
@@ -150,9 +150,9 @@ class Trainer(object):
             if self.step % self.update_ema_every == 0:
                 self.step_ema()
 
-            if self.step % self.save_freq == 0:
-                label = self.step
-                self.save(label)
+            # if self.step % self.save_freq == 0:
+            #     label = self.step
+            #     self.save(label)
 
             if self.step % self.log_freq == 0:
                 infos_str = " | ".join(
@@ -160,12 +160,14 @@ class Trainer(object):
                 )
                 print(f"{self.step}: {loss:8.4f} | {infos_str} | t: {timer():8.4f}")
 
-            if self.step == 0 and self.sample_freq:
-                self.render_reference(self.n_reference)
-
-            if self.sample_freq and self.step % self.sample_freq == 0 and self.step % 1000 == 0:
+            if (
+                self.sample_freq
+                and self.step % self.sample_freq == 0
+                and self.step % 1000 == 0
+            ):
                 print(f"Step: {self.step} - Rendering samples")
-                self.render_samples(n_samples=self.n_samples)
+
+                self.render_samples(self.renderer.env,n_samples=self.n_samples, get_cond_from_env=False)
 
             self.step += 1
         wandb.log({"Time per episode": timer()})
@@ -186,7 +188,7 @@ class Trainer(object):
         if self.bucket is not None:
             sync_logs(self.logdir, bucket=self.bucket, background=self.save_parallel)
 
-    def load(self, epoch, directory = None):
+    def load(self, epoch, directory=None):
         """
         loads model and ema from disk
         """
@@ -196,7 +198,7 @@ class Trainer(object):
             direc = os.path.join(direc, f"state_{epoch}.pt")
 
         loadpath = direc
-        data = torch.load(loadpath, map_location=torch.device('cpu'))
+        data = torch.load(loadpath, map_location=torch.device("cpu"))
 
         self.step = data["step"]
         self.model.load_state_dict(data["model"])
@@ -206,24 +208,24 @@ class Trainer(object):
     # --------------------------------- rendering ---------------------------------#
     # -----------------------------------------------------------------------------#
 
-    def render_reference(self, batch_size=10):
+    def render_reference(self, batch):
         """
         renders training points
         """
 
-        ## get a temporary dataloader to load a single batch
-        dataloader_tmp = cycle(
-            torch.utils.data.DataLoader(
-                self.dataset,
-                batch_size=batch_size,
-                num_workers=0,
-                shuffle=True,
-                pin_memory=False,
-                generator=torch.Generator(device="cpu"),
-            )
-        )
-        batch = dataloader_tmp.__next__()
-        dataloader_tmp.close()
+        # ## get a temporary dataloader to load a single batch
+        # dataloader_tmp = cycle(
+        #     torch.utils.data.DataLoader(
+        #         self.dataset,
+        #         batch_size=batch_size,
+        #         num_workers=0,
+        #         shuffle=True,
+        #         pin_memory=False,
+        #         generator=torch.Generator(device="cpu"),
+        #     )
+        # )
+        # batch = dataloader_tmp.__next__()
+        # dataloader_tmp.close()
 
         ## get trajectories and condition at t=0 from batch
         trajectories = to_np(batch.trajectories)
@@ -235,51 +237,59 @@ class Trainer(object):
             normed_observations, "observations"
         )
 
-        # from diffusion.datasets.preprocessing import blocks_cumsum_quat
-        # # observations = conditions + blocks_cumsum_quat(deltas)
-        # observations = conditions + deltas.cumsum(axis=1)
-
-        #### @TODO: remove block-stacking specific stuff
-        # from diffusion.datasets.preprocessing import blocks_euler_to_quat, blocks_add_kuka
-        # observations = blocks_add_kuka(observations)
-        ####
-
         savepath = os.path.join(self.logdir, f"_sample-reference.png")
-        self.renderer.composite(savepath, observations)
+        self.renderer.composite(savepath, observations, env=self.renderer.env)
 
-    def render_samples(self, batch_size=1, n_samples=1, get_cond_from_env = False):
+    def render_samples(
+        self,
+        env,
+        batch_size=1,
+        n_samples=1,
+        get_cond_from_env=False,
+        render_reference=False,
+    ):
         """
         renders samples from (ema) diffusion model
         Note: set get_cond_from_env to True if you want to get the conditions from the environment
         """
         for i in range(batch_size):
 
-            """modification beste"""
             # print(batch.conditions)
             # {0: tensor([[-0.5193,  0.4605, -0.1075, -0.0416]]), 255: tensor([[ 0.1836, -0.5136,  0.0587,  0.5159]])}
-
 
             ## get a single datapoint
             if get_cond_from_env:
                 zeros = torch.zeros((1, 2))
-                env = load_environment(self.name)
                 conditions = {}
-                conditions[255] = torch.cat((torch.tensor(env.unwrapped.goal).reshape(1,-1), zeros), dim=0).reshape(1,-1)
-                print("Goal used in conditioning: ", conditions[255])
-                conditions[0] = torch.cat((torch.tensor(env.unwrapped.point_env.init_qpos[:2]).reshape(1,-1), zeros), dim=0).reshape(1,-1)
-               
+                conditions[255] = torch.cat(
+                    (torch.tensor(env.unwrapped.goal).reshape(1, -1), zeros), dim=0
+                ).reshape(1, -1)
+
+                conditions[0] = torch.cat(
+                    (
+                        torch.tensor(env.unwrapped.point_env.init_qpos[:2]).reshape(
+                            1, -1
+                        ),
+                        zeros,
+                    ),
+                    dim=0,
+                ).reshape(1, -1)
+
+                # We have to normalize the conditions before passign them to the model.
+                conditions[0] = self.dataset.normalizer.normalize(
+                    conditions[0], "observations"
+                )
+                conditions[255] = self.dataset.normalizer.normalize(
+                    conditions[255], "observations"
+                )
                 normed_c = conditions[0]
-                print("Starting used in conditioning: ", conditions[0])
                 conditions = to_device(conditions, self.device)
-                print(conditions)
+
             else:
                 batch = self.dataloader_vis.__next__()
                 conditions = to_device(batch.conditions, self.device)
                 normed_c = batch.conditions[0]
-
-            
-
-
+                render_reference = True
 
             ## repeat each item in conditions `n_samples` times
             conditions = apply_dict(
@@ -292,8 +302,6 @@ class Trainer(object):
             ## [ n_samples x horizon x (action_dim + observation_dim) ]
             samples = self.ema_model.conditional_sample(conditions)
             samples = to_np(samples)
-
-            # print(f"Samples:{samples}")
 
             ## [ n_samples x horizon x observation_dim ]
             normed_observations = samples[:, :, self.dataset.action_dim :]
@@ -320,83 +328,9 @@ class Trainer(object):
             # from diffusion.datasets.preprocessing import blocks_euler_to_quat, blocks_add_kuka
             # observations = blocks_add_kuka(observations)
             ####
-
             savepath = os.path.join(self.logdir, f"sample-{self.step}-{i}.png")
-            self.renderer.composite(savepath, observations)
-            
-
-    def render_samples_env(self, env, batch_size=1, n_samples=1, get_cond_from_env = False):
-        """
-        renders samples from (ema) diffusion model
-        Note: set get_cond_from_env to True if you want to get the conditions from the environment
-        """
-        for i in range(batch_size):
-
-            """modification beste"""
-            # print(batch.conditions)
-            # {0: tensor([[-0.5193,  0.4605, -0.1075, -0.0416]]), 255: tensor([[ 0.1836, -0.5136,  0.0587,  0.5159]])}
-
-
-            ## get a single datapoint
-            if get_cond_from_env:
-                zeros = torch.zeros((1, 2))
-                conditions = {}
-                conditions[255] = torch.cat((torch.tensor(env.unwrapped.goal).reshape(1,-1), zeros), dim=0).reshape(1,-1)
-                print("Goal used in conditioning: ", conditions[255])
-                conditions[0] = torch.cat((torch.tensor(env.unwrapped.point_env.init_qpos[:2]).reshape(1,-1), zeros), dim=0).reshape(1,-1)
-               
-                normed_c = conditions[0]
-                print("Starting used in conditioning: ", conditions[0])
-                conditions = to_device(conditions, self.device)
-                
-            else:
-                batch = self.dataloader_vis.__next__()
-                conditions = to_device(batch.conditions, self.device)
-                normed_c = batch.conditions[0]
-
-            
-
-
-
-            ## repeat each item in conditions `n_samples` times
-            conditions = apply_dict(
-                einops.repeat,
-                conditions,
-                "b d -> (repeat b) d",
-                repeat=n_samples,
-            )
-
-            ## [ n_samples x horizon x (action_dim + observation_dim) ]
-            samples = self.ema_model.conditional_sample(conditions)
-            samples = to_np(samples)
-
-            # print(f"Samples:{samples}")
-
-            ## [ n_samples x horizon x observation_dim ]
-            normed_observations = samples[:, :, self.dataset.action_dim :]
-
-            # [ 1 x 1 x observation_dim ]
-            normed_conditions = to_np(normed_c)[:, None]
-
-            # from diffusion.datasets.preprocessing import blocks_cumsum_quat
-            # observations = conditions + blocks_cumsum_quat(deltas)
-            # observations = conditions + deltas.cumsum(axis=1)
-
-            ## [ n_samples x (horizon + 1) x observation_dim ]
-            normed_observations = np.concatenate(
-                [np.repeat(normed_conditions, n_samples, axis=0), normed_observations],
-                axis=1,
-            )
-
-            ## [ n_samples x (horizon + 1) x observation_dim ]
-            observations = self.dataset.normalizer.unnormalize(
-                normed_observations, "observations"
-            )
-
-            #### @TODO: remove block-stacking specific stuff
-            # from diffusion.datasets.preprocessing import blocks_euler_to_quat, blocks_add_kuka
-            # observations = blocks_add_kuka(observations)
-            ####
-
-            savepath = os.path.join(self.logdir, f"sample-{self.step}-{i}.png")
-            self.renderer.composite(savepath, observations, env = env)
+            if render_reference:
+                print("The trajectory from the dataset:")
+                self.render_reference(batch)
+            print("The trajectory generated by the diffusion model:")
+            self.renderer.composite(savepath, observations, env=env)
