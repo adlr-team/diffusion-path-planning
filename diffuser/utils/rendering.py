@@ -300,6 +300,7 @@ class MazeRenderer:
         self._remove_margins = False
         self._extent = (0, 1, 1, 0)
         self._background = env.maze.maze_map
+        self.env = env
 
         
         self._background = [[0.3 if x == 'r' else x for x in row] for row in self._background]
