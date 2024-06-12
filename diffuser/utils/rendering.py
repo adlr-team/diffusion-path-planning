@@ -294,34 +294,35 @@ class MazeRenderer:
     def __init__(self, env):
         if type(env) is str:
             env = load_environment(env)
-        #self._config = env._config
-        #self._background = self._config != " "
+        # self._config = env._config
+        # self._background = self._config != " "
         self._background = False
         self._remove_margins = False
         self._extent = (0, 1, 1, 0)
         self._background = env.maze.maze_map
 
-        
-        self._background = [[0.3 if x == 'r' else x for x in row] for row in self._background]
-        self._background = [[0.8 if x == 'g' else x for x in row] for row in self._background]
-        
+        self._background = [
+            [0.3 if x == "r" else x for x in row] for row in self._background
+        ]
+        self._background = [
+            [0.8 if x == "g" else x for x in row] for row in self._background
+        ]
+
         background_array = np.array(self._background)
         rows, cols = background_array.shape
 
         # Define the extent to center the plot at (0, 0)
-        self.extent = [-cols/2, cols/2, -rows/2, rows/2]
+        self.extent = [-cols / 2, cols / 2, -rows / 2, rows / 2]
 
-        
         self.goal = self.env.unwrapped.goal
-        self.starting = self.env.unwrapped.point_env.init_qpos[:2] 
-        print("The goal in rendering is", self.goal)
-        print("The starting point in rendering is", self.starting)
-
+        self.starting = self.env.unwrapped.point_env.init_qpos[:2]
+        # print("The goal in rendering is", self.goal)
+        # print("The starting point in rendering is", self.starting)
 
     def renders(self, env, observations, conditions=None, title=None):
         plt.clf()
         fig = plt.gcf()
-        #fig.set_size_inches(5, 5)
+        # fig.set_size_inches(5, 5)
         plt.imshow(
             np.array((self._background)),
             extent=self.extent,
@@ -331,27 +332,25 @@ class MazeRenderer:
         )
 
         goal = env.unwrapped.goal
-        starting = env.unwrapped.point_env.init_qpos[:2] 
+        starting = env.unwrapped.point_env.init_qpos[:2]
 
         path_length = len(observations)
-        #observations = observations.reshape(len(observations), -1)
+        # observations = observations.reshape(len(observations), -1)
         colors = plt.cm.jet(np.linspace(0, 1, path_length))
         plt.plot(observations[:, 0], observations[:, 1], c="black", zorder=10)
         plt.scatter(observations[:, 0], observations[:, 1], c=colors, zorder=20)
-        print("The last observation", observations[-1])
-
-        print("Goal in rendering:", goal)
-        print("Starting point in rendering:", starting)
 
         # Plot the goal as a red ball
         # Have to apply 0 input to get the current state
-        observation_size = plt.scatter(observations[:, 0], observations[:, 1]).get_sizes()[0]
-        plt.scatter(goal[0], goal[1], c="green", marker="*", s=4*observation_size)
-        plt.scatter(starting[0], starting[1], c="black", marker="D", s=4*observation_size)
+        observation_size = plt.scatter(
+            observations[:, 0], observations[:, 1]
+        ).get_sizes()[0]
+        plt.scatter(goal[0], goal[1], c="green", marker="*", s=4 * observation_size)
+        plt.scatter(
+            starting[0], starting[1], c="black", marker="D", s=4 * observation_size
+        )
 
-        #plt.scatter(observations[-1, 0], observations[-1, 1], c="red", marker="D")
-        
-
+        # plt.scatter(observations[-1, 0], observations[-1, 1], c="red", marker="D")
 
         plt.axis("on")
         plt.title(title)
@@ -364,8 +363,7 @@ class MazeRenderer:
         savepath : str
         observations : [ n_paths x horizon x 2 ]
         """
-        print(paths.shape)
-        print(ncol)
+
         assert (
             len(paths) % ncol == 0
         ), "Number of paths must be divisible by number of columns"
@@ -396,27 +394,27 @@ class Maze2dRenderer(MazeRenderer):
         self._remove_margins = False
         # self._extent = (0, 1, 1, 0)
 
-
         self._background = self.env.maze.maze_map
-        
-        self._background = [[0.3 if x == 'r' else x for x in row] for row in self._background]
-        self._background = [[0.8 if x == 'g' else x for x in row] for row in self._background]
-        
+
+        self._background = [
+            [0.3 if x == "r" else x for x in row] for row in self._background
+        ]
+        self._background = [
+            [0.8 if x == "g" else x for x in row] for row in self._background
+        ]
+
         background_array = np.array(self._background)
         rows, cols = background_array.shape
 
         # Define the extent to center the plot at (0, 0)
-        self.extent = [-cols/2, cols/2, -rows/2, rows/2]
+        self.extent = [-cols / 2, cols / 2, -rows / 2, rows / 2]
 
         action = np.array([[0, 0]])
-        print(action)
-        
+
         self.goal = self.env.unwrapped.goal
-        print(self.goal)
 
-        self.starting = self.env.unwrapped.point_env.init_qpos[:2] 
+        self.starting = self.env.unwrapped.point_env.init_qpos[:2]
 
-        
     # def renders(self, observations, conditions=None, **kwargs):
     #     bounds = MAZE_BOUNDS[self.env_name]
 
