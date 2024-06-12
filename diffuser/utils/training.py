@@ -7,12 +7,11 @@ import numpy as np
 import torch
 
 import wandb
+from diffuser.datasets.d4rl import load_environment
 
 from .arrays import apply_dict, batch_to_device, to_device, to_np
 from .cloud import sync_logs
 from .timer import Timer
-
-from diffuser.datasets.d4rl import load_environment
 
 
 def cycle(dl):
@@ -72,7 +71,7 @@ class Trainer(object):
         self.ema = EMA(ema_decay)
         self.ema_model = copy.deepcopy(self.model)
         self.update_ema_every = update_ema_every
-        self.name =name
+        self.name = name
         self.step_start_ema = step_start_ema
         self.log_freq = log_freq
         self.sample_freq = sample_freq
@@ -137,7 +136,7 @@ class Trainer(object):
             wandb.log({"Training_steps": step})
             for i in range(self.gradient_accumulate_every):
                 batch = next(self.dataloader)
-                batch = batch_to_device(batch,self.device)
+                batch = batch_to_device(batch, self.device)
 
                 loss, infos = self.model.loss(*batch)
                 loss = loss / self.gradient_accumulate_every
@@ -163,9 +162,13 @@ class Trainer(object):
             if self.step == 0 and self.sample_freq:
                 self.render_reference(self.n_reference)
 
-            if self.sample_freq and self.step % self.sample_freq == 0 and self.step % 1000 == 0:
+            if (
+                self.sample_freq
+                and self.step % self.sample_freq == 0
+                and self.step % 1000 == 0
+            ):
                 print(f"Step: {self.step} - Rendering samples")
-                self.render_samples(n_samples=self.n_samples)
+                self.render_samples(n_samples=self.n_samples, get_cond_from_env=True)
 
             self.step += 1
         wandb.log({"Time per episode": timer()})
@@ -186,7 +189,7 @@ class Trainer(object):
         if self.bucket is not None:
             sync_logs(self.logdir, bucket=self.bucket, background=self.save_parallel)
 
-    def load(self, epoch, directory = None):
+    def load(self, epoch, directory=None):
         """
         loads model and ema from disk
         """
@@ -196,7 +199,7 @@ class Trainer(object):
             direc = os.path.join(direc, f"state_{epoch}.pt")
 
         loadpath = direc
-        data = torch.load(loadpath, map_location=torch.device('cpu'))
+        data = torch.load(loadpath, map_location=torch.device("cpu"))
 
         self.step = data["step"]
         self.model.load_state_dict(data["model"])
@@ -245,9 +248,9 @@ class Trainer(object):
         ####
 
         savepath = os.path.join(self.logdir, f"_sample-reference.png")
-        self.renderer.composite(savepath, observations)
+        self.renderer.composite(savepath, observations, env=self.renderer.env)
 
-    def render_samples(self, batch_size=1, n_samples=1, get_cond_from_env = False):
+    def render_samples(self, batch_size=1, n_samples=1, get_cond_from_env=False):
         """
         renders samples from (ema) diffusion model
         Note: set get_cond_from_env to True if you want to get the conditions from the environment
@@ -258,16 +261,25 @@ class Trainer(object):
             # print(batch.conditions)
             # {0: tensor([[-0.5193,  0.4605, -0.1075, -0.0416]]), 255: tensor([[ 0.1836, -0.5136,  0.0587,  0.5159]])}
 
-
             ## get a single datapoint
             if get_cond_from_env:
                 zeros = torch.zeros((1, 2))
                 env = load_environment(self.name)
                 conditions = {}
-                conditions[255] = torch.cat((torch.tensor(env.unwrapped.goal).reshape(1,-1), zeros), dim=0).reshape(1,-1)
+                conditions[255] = torch.cat(
+                    (torch.tensor(env.unwrapped.goal).reshape(1, -1), zeros), dim=0
+                ).reshape(1, -1)
                 print("Goal used in conditioning: ", conditions[255])
-                conditions[0] = torch.cat((torch.tensor(env.unwrapped.point_env.init_qpos[:2]).reshape(1,-1), zeros), dim=0).reshape(1,-1)
-               
+                conditions[0] = torch.cat(
+                    (
+                        torch.tensor(env.unwrapped.point_env.init_qpos[:2]).reshape(
+                            1, -1
+                        ),
+                        zeros,
+                    ),
+                    dim=0,
+                ).reshape(1, -1)
+
                 normed_c = conditions[0]
                 print("Starting used in conditioning: ", conditions[0])
                 conditions = to_device(conditions, self.device)
@@ -277,10 +289,6 @@ class Trainer(object):
                 conditions = to_device(batch.conditions, self.device)
                 normed_c = batch.conditions[0]
 
-            
-
-
-
             ## repeat each item in conditions `n_samples` times
             conditions = apply_dict(
                 einops.repeat,
@@ -322,10 +330,11 @@ class Trainer(object):
             ####
 
             savepath = os.path.join(self.logdir, f"sample-{self.step}-{i}.png")
-            self.renderer.composite(savepath, observations)
-            
+            self.renderer.composite(savepath, observations, env=self.renderer.env)
 
-    def render_samples_env(self, env, batch_size=1, n_samples=1, get_cond_from_env = False):
+    def render_samples_env(
+        self, env, batch_size=1, n_samples=1, get_cond_from_env=False
+    ):
         """
         renders samples from (ema) diffusion model
         Note: set get_cond_from_env to True if you want to get the conditions from the environment
@@ -336,27 +345,32 @@ class Trainer(object):
             # print(batch.conditions)
             # {0: tensor([[-0.5193,  0.4605, -0.1075, -0.0416]]), 255: tensor([[ 0.1836, -0.5136,  0.0587,  0.5159]])}
 
-
             ## get a single datapoint
             if get_cond_from_env:
                 zeros = torch.zeros((1, 2))
                 conditions = {}
-                conditions[255] = torch.cat((torch.tensor(env.unwrapped.goal).reshape(1,-1), zeros), dim=0).reshape(1,-1)
+                conditions[255] = torch.cat(
+                    (torch.tensor(env.unwrapped.goal).reshape(1, -1), zeros), dim=0
+                ).reshape(1, -1)
                 print("Goal used in conditioning: ", conditions[255])
-                conditions[0] = torch.cat((torch.tensor(env.unwrapped.point_env.init_qpos[:2]).reshape(1,-1), zeros), dim=0).reshape(1,-1)
-               
+                conditions[0] = torch.cat(
+                    (
+                        torch.tensor(env.unwrapped.point_env.init_qpos[:2]).reshape(
+                            1, -1
+                        ),
+                        zeros,
+                    ),
+                    dim=0,
+                ).reshape(1, -1)
+
                 normed_c = conditions[0]
                 print("Starting used in conditioning: ", conditions[0])
                 conditions = to_device(conditions, self.device)
-                
+
             else:
                 batch = self.dataloader_vis.__next__()
                 conditions = to_device(batch.conditions, self.device)
                 normed_c = batch.conditions[0]
-
-            
-
-
 
             ## repeat each item in conditions `n_samples` times
             conditions = apply_dict(
@@ -399,4 +413,4 @@ class Trainer(object):
             ####
 
             savepath = os.path.join(self.logdir, f"sample-{self.step}-{i}.png")
-            self.renderer.composite(savepath, observations, env = env)
+            self.renderer.composite(savepath, observations, env=env)
