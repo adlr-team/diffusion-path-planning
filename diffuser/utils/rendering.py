@@ -88,7 +88,7 @@ def plot2img(fig, remove_margins=True):
 # -----------------------------------------------------------------------------#
 # ---------------------------------- renderers --------------------------------#
 # -----------------------------------------------------------------------------#
-
+"""
 # # class MuJoCoRenderer:
 #     '''
 #         default mujoco renderer
@@ -275,7 +275,7 @@ def plot2img(fig, remove_margins=True):
 
 #     def __call__(self, *args, **kwargs):
 #         return self.renders(*args, **kwargs)
-
+"""
 # -----------------------------------------------------------------------------#
 # ----------------------------------- maze2d ----------------------------------#
 # -----------------------------------------------------------------------------#
@@ -287,6 +287,19 @@ MAZE_BOUNDS = {
     "PointMaze_Large-v3": (0, 9, 0, 12),
     "PointMaze_Medium-v3": (0, 8, 0, 8),
 }
+
+class FrankaRenderer: 
+    def __init__(self, env):
+        if type(env) is str:
+            self.env = load_environment(env)
+
+    def renders(self, act_np, conditions = None):
+        for i in range(len(act_np)):
+            self.env.step(act_np[i])
+            self.env.render()
+        self.env.close()
+
+
 
 
 class MazeRenderer:
