@@ -79,10 +79,12 @@ def sequence_dataset(preprocess_fn):
     """
     dataset = get_dataset()
     dataset = preprocess_fn(dataset)
+    print("here")
 
     for episode_number in range(dataset._data.total_episodes):
         #episode_data = process_maze2d_episode(dataset[episode_number])
         episode_data = process_franka_episode(dataset[episode_number])
+        print(episode_data)
         yield episode_data
 
 
