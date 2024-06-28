@@ -133,7 +133,7 @@ class Trainer(object):
 
         timer = Timer()
         for step in range(n_train_steps):
-            wandb.log({"Training_steps": step})
+            #wandb.log({"Training_steps": step})
             for i in range(self.gradient_accumulate_every):
                 batch = next(self.dataloader)
 
@@ -141,7 +141,7 @@ class Trainer(object):
 
                 loss, infos = self.model.loss(*batch)
                 loss = loss / self.gradient_accumulate_every
-                wandb.log({"Model Loss": loss})
+                #wandb.log({"Model Loss": loss})
                 loss.backward()
 
             self.optimizer.step()
@@ -163,7 +163,7 @@ class Trainer(object):
             if (
                 self.sample_freq
                 and self.step % self.sample_freq == 0
-                and self.step % 1000 == 0
+                and self.step % 10 == 0
             ):
                 print(f"Step: {self.step} - Rendering samples")
 

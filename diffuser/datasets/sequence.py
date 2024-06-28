@@ -25,11 +25,12 @@ class SequenceDataset(torch.utils.data.Dataset):
         self.max_path_length = max_path_length
         self.use_padding = use_padding
         itr = sequence_dataset(self.preprocess_fn)
+        print("seq")
 
         fields = ReplayBuffer(max_n_episodes, max_path_length, termination_penalty)
         for i, episode in enumerate(itr):
             print("in iter")
-            print(episode)
+            
             fields.add_path(episode)
         fields.finalize()
 
@@ -72,14 +73,21 @@ class SequenceDataset(torch.utils.data.Dataset):
             each index maps to a datapoint
         '''
         indices = []
+        print("here----------")
+        print(path_lengths)
         for i, path_length in enumerate(path_lengths):
+            print(self.max_path_length)
+            print(horizon)
+            
             max_start = min(path_length - 1, self.max_path_length - horizon)
             if not self.use_padding:
                 max_start = min(max_start, path_length - horizon)
+            print(max_start)
             for start in range(max_start):
                 end = start + horizon
                 indices.append((i, start, end))
         indices = np.array(indices)
+        print(indices)
         return indices
 
     def get_conditions(self, observations):
