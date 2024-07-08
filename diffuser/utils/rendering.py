@@ -310,6 +310,7 @@ class MazeRenderer:
         ]
 
         background_array = np.array(self._background)
+
         rows, cols = background_array.shape
 
         # Define the extent to center the plot at (0, 0)
@@ -338,6 +339,10 @@ class MazeRenderer:
         path_length = len(observations)
         # observations = observations.reshape(len(observations), -1)
         colors = plt.cm.jet(np.linspace(0, 1, path_length))
+
+        
+
+
         plt.plot(observations[:, 0], observations[:, 1], c="black", zorder=10)
         plt.scatter(observations[:, 0], observations[:, 1], c=colors, zorder=20)
 
@@ -405,6 +410,7 @@ class Maze2dRenderer(MazeRenderer):
         ]
 
         background_array = np.array(self._background)
+
         rows, cols = background_array.shape
 
         # Define the extent to center the plot at (0, 0)
