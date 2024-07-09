@@ -6,10 +6,9 @@ import matplotlib
 matplotlib.use("Agg")  # or 'Qt5Agg', depending on your system
 import matplotlib.pyplot as plt
 import numpy as np
+from helper import interpolate_trajectories
 from mpl_toolkits.mplot3d import Axes3D
 from rokin import robots, vis
-
-from justin_Arm.interpolation import interpolate_trajectories
 
 # load numpy ndarray:
 image_4123 = np.load("image_4123.npy")
@@ -88,6 +87,8 @@ def plot_trajectory_per_frames(trajectory):
 
 
 def plot_multiple_trajectories(q_paths, trajectory_num):
+    colors = plt.cm.jet(np.linspace(0, 1, 25))
+
     # Second plot: End-effector trajectory for multiple paths
     fig2 = plt.figure()
     ax2 = fig2.add_subplot(111, projection="3d")
@@ -99,15 +100,15 @@ def plot_multiple_trajectories(q_paths, trajectory_num):
     print(q_paths.shape)
     # Create a new array with the sampled rows
     sampled_paths = q_paths[random_indices, :, :]
-
+    print(f"Sampled paths shape: {sampled_paths.shape}")
     # Iterate over each path (20 paths)
     for i in range(trajectory_num):
         x_coords = []
         y_coords = []
         z_coords = []
-        frames = robot.get_frames(sampled_paths[i])
+        frames = sampled_paths[i]
         # Iterate over each waypoint (20 waypoints)
-        for waypoint_idx in range(20):
+        for waypoint_idx in range(25):
             # Extract the homogeneous matrix for the current robot and waypoint
             matrix = frames[waypoint_idx, 7, :, :]
             # Extract the X, Y, Z coordinates (assuming they are in the last row and first three columns)
@@ -121,7 +122,7 @@ def plot_multiple_trajectories(q_paths, trajectory_num):
             z_coords.append(z)
 
         # Plot the path for the current robot with black line and scatter points with color gradient
-        ax2.plot(x_coords, y_coords, z_coords, zorder=10)
+        ax2.scatter(x_coords, y_coords, z_coords, c=colors, zorder=10)
 
     # Add labels and legend
     ax2.set_xlabel("X")
@@ -164,9 +165,9 @@ def plot_q_values_per_trajectory(q_paths):
     plt.show()
 
 
-# plot_trajectory_per_frames(paths[0])
+# # plot_trajectory_per_frames(paths[0])
+# # plot_q_values_per_trajectory(paths)
+# # plot_multiple_trajectories(paths, 20)
+# paths = interpolate_trajectories(paths, 100)
+# print(f"Paths shape: {paths.shape}")
 # plot_q_values_per_trajectory(paths)
-# plot_multiple_trajectories(paths, 20)
-paths = interpolate_trajectories(paths, 100)
-print(f"Paths shape: {paths.shape}")
-plot_q_values_per_trajectory(paths)
