@@ -351,10 +351,10 @@ class MazeRenderer:
         observation_size = plt.scatter(
             observations[:, 0], observations[:, 1]
         ).get_sizes()[0]
-        plt.scatter(goal[0], goal[1], c="green", marker="*", s=4 * observation_size)
-        plt.scatter(
-            starting[0], starting[1], c="black", marker="D", s=4 * observation_size
-        )
+        # plt.scatter(goal[0], goal[1], c="green", marker="*", s=4 * observation_size)
+        # plt.scatter(
+        #     starting[0], starting[1], c="black", marker="D", s=4 * observation_size
+        # )
 
         # plt.scatter(observations[-1, 0], observations[-1, 1], c="red", marker="D")
 
