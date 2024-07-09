@@ -340,9 +340,6 @@ class MazeRenderer:
         # observations = observations.reshape(len(observations), -1)
         colors = plt.cm.jet(np.linspace(0, 1, path_length))
 
-        
-
-
         plt.plot(observations[:, 0], observations[:, 1], c="black", zorder=10)
         plt.scatter(observations[:, 0], observations[:, 1], c=colors, zorder=20)
 
@@ -351,10 +348,10 @@ class MazeRenderer:
         observation_size = plt.scatter(
             observations[:, 0], observations[:, 1]
         ).get_sizes()[0]
-        # plt.scatter(goal[0], goal[1], c="green", marker="*", s=4 * observation_size)
-        # plt.scatter(
-        #     starting[0], starting[1], c="black", marker="D", s=4 * observation_size
-        # )
+        plt.scatter(goal[0], goal[1], c="green", marker="*", s=4 * observation_size)
+        plt.scatter(
+            starting[0], starting[1], c="black", marker="D", s=4 * observation_size
+        )
 
         # plt.scatter(observations[-1, 0], observations[-1, 1], c="red", marker="D")
 

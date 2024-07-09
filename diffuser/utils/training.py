@@ -242,13 +242,13 @@ class Trainer(object):
         savepath = os.path.join(self.logdir, f"_sample-reference.png")
         collision_count, collision_obs = self.count_and_get_collisions(observations)
 
-        print(f"Collision_count_refernece  : {collision_count}")
+        print(f"Collision_count_reference  : {collision_count}")
 
         self.renderer.composite(savepath, observations, env=self.renderer.env)
         # Renmder collisions:
-        self.renderer.composite(savepath, observations, env=self.renderer.env)
-        print(f"Collision observations:")
-        self.renderer.composite(savepath, collision_obs, env=self.renderer.env)
+        if collision_count > 0:
+            print(f"Collision observations:")
+            self.renderer.composite(savepath, collision_obs, env=self.renderer.env)
 
     def count_and_get_collisions(self, observations):
 
@@ -322,6 +322,7 @@ class Trainer(object):
                 conditions[255] = self.dataset.normalizer.normalize(
                     conditions[255], "observations"
                 )
+                # Is this wrong?
                 normed_c = conditions[0]
                 conditions = to_device(conditions, self.device)
 
@@ -382,5 +383,7 @@ class Trainer(object):
             wandb.log({"Collision count:": collision_count})
 
             self.renderer.composite(savepath, observations, env=env)
-            print(f"Collision observations: {collisions_obs}")
-            self.renderer.composite(savepath, collisions_obs, env=env)
+            # print(f"Collision observations: {collisions_obs}")
+            if collision_count > 0:
+                print(f"Collision observations:")
+                self.renderer.composite(savepath, collisions_obs, env=env)

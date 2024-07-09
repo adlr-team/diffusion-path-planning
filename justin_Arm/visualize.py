@@ -165,9 +165,9 @@ def plot_q_values_per_trajectory(q_paths):
     plt.show()
 
 
-# # plot_trajectory_per_frames(paths[0])
-# # plot_q_values_per_trajectory(paths)
-# # plot_multiple_trajectories(paths, 20)
-# paths = interpolate_trajectories(paths, 100)
-# print(f"Paths shape: {paths.shape}")
+# plot_trajectory_per_frames(paths[0])
 # plot_q_values_per_trajectory(paths)
+# plot_multiple_trajectories(paths, 20)
+paths = interpolate_trajectories(paths, 100)
+print(f"Paths shape: {paths.shape}")
+plot_q_values_per_trajectory(paths)
