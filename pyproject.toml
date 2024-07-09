@@ -15,6 +15,11 @@ torch = "2.3.0"
 matplotlib = "^3.9.0"
 pre-commit = "^3.7.1"
 wandb = "^0.17.0"
+rokin = {git = "ssh://git@github.com/scleronomic/rokin.git", rev = "stable1.10"}
+pyvista = "^0.44.0"
+eigen = "^0.1.1"
+pandas = "^2.2.2"
+numpy = "^2.0.0"
 
 [tool.poetry.dev-dependencies]
 
