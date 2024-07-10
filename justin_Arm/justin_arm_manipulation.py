@@ -1,6 +1,7 @@
 import pickle
 
 import numpy as np
+from helper import analyze_distance, robot_env_dist
 from rokin import robots, vis
 from wzk import sql2
 
@@ -15,25 +16,37 @@ n_worlds = 12500
 
 # Load data:
 # pickle load:
-raw_path_4123 = pickle.load(open("justin_arm/paths_raw_4123.pkl", "rb"))
-world_4123 = pickle.load(open("justin_arm/world_4123.pkl", "rb"))
+raw_path = pickle.load(open("justin_arm/data/paths_raw_4123.pkl", "rb"))
+world = pickle.load(open("justin_arm/data/world_4123.pkl", "rb"))
 
 
-paths_4123 = np.load("justin_arm/q_paths_4123.npy")
-image_4123 = np.load("justin_arm/image_4123.npy")
+paths = np.load("justin_arm/data/q_paths_4123.npy")
+image = np.load("justin_arm/data/image_4123.npy")
 
 
 robot = robots.JustinArm07()
+
+
+distance = robot_env_dist(q=paths[1], robot=robot, img=image[0])
+score = analyze_distance(distance)
+
+
 # alternative: three_pv - pyvista; mc meshcat
-vis.three_mc.animate_path(
+# vis.three_mc.animate_path(
+#     robot=robot,
+#     q=paths_4123[10],
+#     kwargs_robot=dict(color="red", alpha=0.2),
+#     kwargs_world=dict(img=image_4123[0], limits=limits, color="yellow"),
+# )
+
+
+vis.three_pv.animate_path(
     robot=robot,
-    q=paths_4123[10],
-    kwargs_robot=dict(color="red", alpha=0.2),
-    kwargs_world=dict(img=image_4123[0], limits=limits, color="yellow"),
+    q=paths[1],
+    kwargs_robot=dict(color="red"),
+    kwargs_world=dict(img=image[0], limits=limits, color="yellow"),
 )
+
+
 input()
-
-# vis.three_pv.animate_path(robot=robot, q=q_paths[0],
-#                           kwargs_world=dict(img=obstacle_images[2], limits=limits))
-
 # move through animation with arrow keys

@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from obstacle_distance import img2dist_img, img2interpolation_fun
 from scipy.interpolate import interp1d
 
 
@@ -69,3 +70,36 @@ def condition_start_end_per_trajectory(q_path):
         0: torch.tensor(start_condition, dtype=torch.float32),
         n_waypoints - 1: torch.tensor(end_condition, dtype=torch.float32),
     }
+
+
+def robot_env_dist(q, robot, img, n_voxels=64):
+    voxel_size = 2.5 / n_voxels
+    limits = np.array([[-1.25, +1.25], [-1.25, +1.25], [-1.25, +1.25]])
+    dimg = img2dist_img(img=img, voxel_size=voxel_size, add_boundary=False)
+    dist_fun = img2interpolation_fun(img=dimg, limits=limits, order=0)
+    x_spheres = robot.get_spheres(q=q)
+    return dist_fun(x=x_spheres) - robot.spheres.r
+
+
+def analyze_distance(distance):
+    # Show the shape of the ndarray:
+    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    # Show true if the ndarray contains negative values:
+    print(f"np.any(distance < 0): {np.any(distance < 0)}")
+    # Show the negative values:
+    print(f"distance[distance < 0]: {distance[distance < 0]}")
+    # Show the number of negative values:
+    print(f"np.sum(distance < 0): {np.sum(distance < 0)}")
+    # Retrieve the indices within the df of the entries where the distance is negative:
+    print(f"np.where(distance < 0): {np.where(distance < 0)}")
+
+    # Add up the values of the entries which are negative:
+    print(f"np.sum(distance[distance < 0]): {np.sum(distance[distance < 0])}")
+    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
+    if np.any(distance < 0):
+        collision_score = np.sum(distance[distance < 0])
+    else:
+        collision_score = 0
+    print(f"Collision_score: {collision_score}")
+    return collision_score
