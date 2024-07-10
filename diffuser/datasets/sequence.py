@@ -1,26 +1,41 @@
+import pdb
 from collections import namedtuple
+
 import numpy as np
 import torch
-import pdb
 
-from .preprocessing import get_preprocess_fn
+from justin_arm.helper import (
+    condition_start_end_per_trajectory,
+    create_state_action_array,
+    interpolate_trajectories,
+)
+
+from .buffer import ReplayBuffer
 from .d4rl import load_environment, sequence_dataset
 from .normalization import DatasetNormalizer
-from .buffer import ReplayBuffer
+from .preprocessing import get_preprocess_fn
 
-
-Batch = namedtuple('Batch', 'trajectories conditions')
-ValueBatch = namedtuple('ValueBatch', 'trajectories conditions values')
+Batch = namedtuple("Batch", "trajectories conditions")
+ValueBatch = namedtuple("ValueBatch", "trajectories conditions values")
 
 
 class SequenceDataset(torch.utils.data.Dataset):
 
-    def __init__(self, env='hopper-medium-replay', horizon=64,
-        normalizer='LimitsNormalizer', preprocess_fns=[], max_path_length=1000,
-        max_n_episodes=10000, termination_penalty=0, use_padding=True, seed=None):
+    def __init__(
+        self,
+        env="hopper-medium-replay",
+        horizon=64,
+        normalizer="LimitsNormalizer",
+        preprocess_fns=[],
+        max_path_length=1000,
+        max_n_episodes=10000,
+        termination_penalty=0,
+        use_padding=True,
+        seed=None,
+    ):
         self.preprocess_fn = get_preprocess_fn(preprocess_fns, env)
         self.env = env = load_environment(env)
-        #self.env.seed(seed)
+        # self.env.seed(seed)
         self.horizon = horizon
         self.max_path_length = max_path_length
         self.use_padding = use_padding
@@ -31,12 +46,14 @@ class SequenceDataset(torch.utils.data.Dataset):
             fields.add_path(episode)
         fields.finalize()
 
-        self.normalizer = DatasetNormalizer(fields, normalizer, path_lengths=fields['path_lengths'])
+        self.normalizer = DatasetNormalizer(
+            fields, normalizer, path_lengths=fields["path_lengths"]
+        )
         self.indices = self.make_indices(fields.path_lengths, horizon)
 
         self.observation_dim = fields.observations.shape[-1]
-        #self.action_dim = fields.actions.shape[-1]
-        self.action_dim =2
+        # self.action_dim = fields.actions.shape[-1]
+        self.action_dim = 2
         self.fields = fields
         self.n_episodes = fields.n_episodes
         self.path_lengths = fields.path_lengths
@@ -46,29 +63,35 @@ class SequenceDataset(torch.utils.data.Dataset):
         # shapes = {key: val.shape for key, val in self.fields.items()}
         # print(f'[ datasets/mujoco ] Dataset fields: {shapes}')
 
-    def normalize(self, keys=['observations', 'actions']):
-        '''
-            normalize fields that will be predicted by the diffusion model
-        '''
+    def normalize(self, keys=["observations", "actions"]):
+        """
+        normalize fields that will be predicted by the diffusion model
+        """
         # for key in keys:
         #     array = self.fields[key].reshape(self.n_episodes*self.max_path_length, -1)
         #     normed = self.normalizer(array, key)
         #     self.fields[f'normed_{key}'] = normed.reshape(self.n_episodes, self.max_path_length, -1)
         print(self.fields)
 
-        array = self.fields.observations.reshape(self.n_episodes*self.max_path_length, -1)
-        normed = self.normalizer(array, 'observations')
-        self.fields[f'normed_observations'] = normed.reshape(self.n_episodes, self.max_path_length, -1)
+        array = self.fields.observations.reshape(
+            self.n_episodes * self.max_path_length, -1
+        )
+        normed = self.normalizer(array, "observations")
+        self.fields[f"normed_observations"] = normed.reshape(
+            self.n_episodes, self.max_path_length, -1
+        )
 
-        array = self.fields.actions.reshape(self.n_episodes*self.max_path_length, -1)
-        normed = self.normalizer(array, 'actions')
-        self.fields[f'normed_actions'] = normed.reshape(self.n_episodes, self.max_path_length, -1)
+        array = self.fields.actions.reshape(self.n_episodes * self.max_path_length, -1)
+        normed = self.normalizer(array, "actions")
+        self.fields[f"normed_actions"] = normed.reshape(
+            self.n_episodes, self.max_path_length, -1
+        )
 
     def make_indices(self, path_lengths, horizon):
-        '''
-            makes indices for sampling from dataset;
-            each index maps to a datapoint
-        '''
+        """
+        makes indices for sampling from dataset;
+        each index maps to a datapoint
+        """
         indices = []
         for i, path_length in enumerate(path_lengths):
             max_start = min(path_length - 1, self.max_path_length - horizon)
@@ -81,9 +104,9 @@ class SequenceDataset(torch.utils.data.Dataset):
         return indices
 
     def get_conditions(self, observations):
-        '''
-            condition on current observation for planning
-        '''
+        """
+        condition on current observation for planning
+        """
         return {0: observations[0]}
 
     def __len__(self):
@@ -94,7 +117,6 @@ class SequenceDataset(torch.utils.data.Dataset):
 
         observations = self.fields.normed_observations[path_ind, start:end]
         actions = self.fields.normed_actions[path_ind, start:end]
-
         conditions = self.get_conditions(observations)
         trajectories = np.concatenate([actions, observations], axis=-1)
         batch = Batch(trajectories, conditions)
@@ -103,10 +125,20 @@ class SequenceDataset(torch.utils.data.Dataset):
 
 class GoalDataset(SequenceDataset):
 
+    def __getitem__(self, idx, eps=1e-4):
+        path_ind, start, end = self.indices[idx]
+
+        observations = self.fields.normed_observations[path_ind, start:end]
+        actions = self.fields.normed_actions[path_ind, start:end]
+        conditions = self.get_conditions(observations)
+        trajectories = np.concatenate([actions, observations], axis=-1)
+        batch = Batch(trajectories, conditions)
+        return batch
+
     def get_conditions(self, observations):
-        '''
-            condition on both the current observation and the last observation in the plan
-        '''
+        """
+        condition on both the current observation and the last observation in the plan
+        """
         return {
             0: observations[0],
             self.horizon - 1: observations[-1],
@@ -114,28 +146,30 @@ class GoalDataset(SequenceDataset):
 
 
 class ValueDataset(SequenceDataset):
-    '''
-        adds a value field to the datapoints for training the value function
-    '''
+    """
+    adds a value field to the datapoints for training the value function
+    """
 
     def __init__(self, *args, discount=0.99, normed=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.discount = discount
-        self.discounts = self.discount ** np.arange(self.max_path_length)[:,None]
+        self.discounts = self.discount ** np.arange(self.max_path_length)[:, None]
         self.normed = False
         if normed:
             self.vmin, self.vmax = self._get_bounds()
             self.normed = True
 
     def _get_bounds(self):
-        print('[ datasets/sequence ] Getting value dataset bounds...', end=' ', flush=True)
+        print(
+            "[ datasets/sequence ] Getting value dataset bounds...", end=" ", flush=True
+        )
         vmin = np.inf
         vmax = -np.inf
         for i in range(len(self.indices)):
             value = self.__getitem__(i).values.item()
             vmin = min(value, vmin)
             vmax = max(value, vmax)
-        print('✓')
+        print("✓")
         return vmin, vmax
 
     def normalize_value(self, value):
@@ -148,11 +182,26 @@ class ValueDataset(SequenceDataset):
     def __getitem__(self, idx):
         batch = super().__getitem__(idx)
         path_ind, start, end = self.indices[idx]
-        rewards = self.fields['rewards'][path_ind, start:]
-        discounts = self.discounts[:len(rewards)]
+        rewards = self.fields["rewards"][path_ind, start:]
+        discounts = self.discounts[: len(rewards)]
         value = (discounts * rewards).sum()
         if self.normed:
             value = self.normalize_value(value)
         value = np.array([value], dtype=np.float32)
         value_batch = ValueBatch(*batch, value)
         return value_batch
+
+
+class TrajectoryDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset, horizon):
+        self.dataset = interpolate_trajectories(dataset, horizon)
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def __getitem__(self, idx):
+        trajectory = self.dataset[idx]
+        conditions = condition_start_end_per_trajectory(trajectory)
+        stacked_array, actions = create_state_action_array(trajectory)
+        batch = Batch(stacked_array, conditions)
+        return batch
