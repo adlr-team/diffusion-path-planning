@@ -12,7 +12,7 @@ from justin_arm.helper import (
 
 from .buffer import ReplayBuffer
 from .d4rl import load_environment, sequence_dataset
-from .normalization import DatasetNormalizer
+from .normalization import LimitsNormalizer
 from .preprocessing import get_preprocess_fn
 
 Batch = namedtuple("Batch", "trajectories conditions")
@@ -193,14 +193,25 @@ class ValueDataset(SequenceDataset):
 
 
 class TrajectoryDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset, horizon):
+
+    def __init__(
+        self,
+        dataset,
+        horizon,
+        image,
+    ):
         self.dataset = interpolate_trajectories(dataset, horizon)
+        self.action_dim = (7,)
+        self.horizon = horizon
+        self.image = image
+        self.normalizer = self.normalizer = LimitsNormalizer(self.dataset)
+        self.normalized_data = self.normalizer.normalize(self.dataset)
 
     def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        trajectory = self.dataset[idx]
+        trajectory = self.normalized_data[idx]
         conditions = condition_start_end_per_trajectory(trajectory)
         stacked_array, actions = create_state_action_array(trajectory)
         batch = Batch(stacked_array, conditions)

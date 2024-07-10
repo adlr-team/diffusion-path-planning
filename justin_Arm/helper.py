@@ -1,7 +1,8 @@
 import numpy as np
 import torch
-from obstacle_distance import img2dist_img, img2interpolation_fun
 from scipy.interpolate import interp1d
+
+from justin_arm.obstacle_distance import img2dist_img, img2interpolation_fun
 
 
 def interpolate_trajectories(data, target_length):
