@@ -1,3 +1,5 @@
 *.hd5f
 *.pyc
 wandb/
+/saved/*.pkl
+/saved_justin/*.pkl
