@@ -14,10 +14,8 @@ from diffuser.utils.arrays import apply_dict, batch_to_device, to_device, to_np
 from diffuser.utils.cloud import sync_logs
 from diffuser.utils.timer import Timer
 from justin_arm.helper import analyze_distance, robot_env_dist
-from justin_arm.visualize import (
-    plot_q_values_per_trajectory,
-    plot_trajectory_per_frames,
-)
+from justin_arm.visualize import (plot_q_values_per_trajectory,
+                                  plot_trajectory_per_frames)
 
 
 def cycle(dl):
@@ -275,7 +273,7 @@ class Justin_Trainer(object):
         ## [ n_samples x horizon x observation_dim ]
         normed_observations = samples[:, :, self.dataset.action_dim[0] :]
         # print(f"Before unnormalizing: {normed_observations.shape}")
-        # [ 1 x 1 x observation_dim ]
+        # [ 1 x 1 x observation_dim ]+
         normed_conditions = to_np(normed_c)[:, None]
 
         # ## [ n_samples x (horizon + 1) x observation_dim ]
