@@ -14,6 +14,10 @@ from diffuser.utils.arrays import apply_dict, batch_to_device, to_device, to_np
 from diffuser.utils.cloud import sync_logs
 from diffuser.utils.timer import Timer
 from justin_arm.helper import analyze_distance, robot_env_dist
+from justin_arm.visualize import (
+    plot_q_values_per_trajectory,
+    plot_trajectory_per_frames,
+)
 
 
 def cycle(dl):
@@ -53,7 +57,7 @@ class Justin_Trainer(object):
         robot,
         name,
         ema_decay=0.995,
-        train_batch_size=16,
+        train_batch_size=1,
         train_lr=2e-5,
         gradient_accumulate_every=2,
         step_start_ema=2000,
@@ -132,11 +136,46 @@ class Justin_Trainer(object):
     # ------------------------------------ api ------------------------------------#
     # -----------------------------------------------------------------------------#
 
+    def train_single_datapoint(self, n_train_steps, single_input):
+        timer = Timer()
+        for step in range(n_train_steps):
+            wandb.log({"Training_steps": step})
+
+            # No need for gradient accumulation when overfitting a single datapoint
+            for i in range(self.gradient_accumulate_every):
+                # Use the single datapoint
+                loss, infos = self.model.loss(*single_input)
+                loss = loss / self.gradient_accumulate_every
+
+                loss.backward()
+
+            self.optimizer.step()
+            self.optimizer.zero_grad()
+
+            # if self.step % self.update_ema_every == 0:
+            #     self.step_ema()
+
+            # Log
+            if self.step % self.log_freq == 0:
+                infos_str = " | ".join(
+                    [f"{key}: {val:8.4f}" for key, val in infos.items()]
+                )
+                wandb.log({"Model Loss": loss})
+                print(f"{self.step}: {loss:8.4f} | {infos_str} | t: {timer():8.4f}")
+
+            self.step += 1
+        wandb.log({"Time per episode": timer()})
+
+        # Save model
+        if self.step % self.save_freq == 0:
+            self.save(self.step)
+
     def train(self, n_train_steps):
 
         timer = Timer()
         for step in range(n_train_steps):
             wandb.log({"Training_steps": step})
+
             for i in range(self.gradient_accumulate_every):
                 batch = next(self.dataloader)
                 batch = batch_to_device(batch, self.device)
@@ -152,11 +191,6 @@ class Justin_Trainer(object):
             if self.step % self.update_ema_every == 0:
                 self.step_ema()
 
-            # Save model
-            if self.step % self.save_freq == 0:
-                label = self.step
-                self.save(label)
-
             # Log
             if self.step % self.log_freq == 0:
                 infos_str = " | ".join(
@@ -165,17 +199,15 @@ class Justin_Trainer(object):
                 wandb.log({"Model Loss": loss})
                 print(f"{self.step}: {loss:8.4f} | {infos_str} | t: {timer():8.4f}")
 
-            # Render samples
-            if (
-                self.sample_freq
-                and self.step % self.sample_freq == 0
-                and self.step % 1000 == 0
-            ):
-
-                print(f"Step: {self.step} - Rendering samples")
-                self.render_sample()
-
             self.step += 1
+            # Render samples
+            if self.step % self.save_freq == 0:
+                print(f"Saving model at step {self.step}")
+                self.save(self.step)
+                print(f"Rendering samples")
+                collision_score = self.render_sample()
+                wandb.log({"Collision Score": collision_score})
+
         wandb.log({"Time per episode": timer()})
 
     def save(self, epoch):
@@ -214,25 +246,10 @@ class Justin_Trainer(object):
     # --------------------------------- rendering ---------------------------------#
     # -----------------------------------------------------------------------------#
 
-    def render_reference(self, batch):
-        """
-        renders training points
-        """
-
-        ## get trajectories and condition at t=0 from batch
-        trajectories = to_np(batch.trajectories)
-        conditions = to_np(batch.conditions[0])[:, None]
-
-        ## [ batch_size x horizon x observation_dim ]
-        normed_observations = trajectories[:, :, self.dataset.action_dim :]
-        observations = self.dataset.normalizer.unnormalize(
-            normed_observations, "observations"
-        )
-        return
-
     def render_sample(
         self,
         n_samples=1,
+        render_3d=False,
     ):
         """
         renders samples from (ema) diffusion model
@@ -254,19 +271,10 @@ class Justin_Trainer(object):
         ## [ n_samples x horizon x (action_dim + observation_dim) ]
         samples = self.ema_model.conditional_sample(conditions)
         samples = to_np(samples)
-        print(f"After sampling: {samples.shape}")
-        # Check the data distribution of the samples
-        print(f"Samples: {samples.shape}")
-        # I want to retrieve min max and mean of the samples
-        print(f"Min: {samples.min()}")
-        print(f"Max: {samples.max()}")
-        print(f"Mean: {samples.mean()}")
-        print(f"Std: {samples.std()}")
-        print(f"Paths: {samples[:, :, :7]}")
 
         ## [ n_samples x horizon x observation_dim ]
         normed_observations = samples[:, :, self.dataset.action_dim[0] :]
-        print(f"Before unnormalizing: {normed_observations.shape}")
+        # print(f"Before unnormalizing: {normed_observations.shape}")
         # [ 1 x 1 x observation_dim ]
         normed_conditions = to_np(normed_c)[:, None]
 
@@ -277,27 +285,81 @@ class Justin_Trainer(object):
         # )
         ## [ n_samples x (horizon + 1) x observation_dim ]
         observations = self.dataset.normalizer.unnormalize(normed_observations[0])
-        print(f"After unnormalizing: {observations.shape}")
+        # print(f"After unnormalizing: {observations.shape}")
 
         # Get collision_metric:
         distance = robot_env_dist(
             q=observations, robot=self.robot, img=self.dataset.image[0]
         )
+        # Get collision score
+        collision_score = analyze_distance(distance)
 
-        score = analyze_distance(distance)
-        wandb.log({"Collision score": score})
+        # Render 3D
+        if render_3d:
+            limits = np.array([[-1.25, +1.25], [-1.25, +1.25], [-1.25, +1.25]])
+            vis.three_pv.animate_path(
+                robot=self.robot,
+                q=observations,
+                kwargs_robot=dict(color="red"),
+                kwargs_world=dict(
+                    img=self.dataset.image[0], limits=limits, color="yellow"
+                ),
+            )
 
-        limits = np.array([[-1.25, +1.25], [-1.25, +1.25], [-1.25, +1.25]])
-        vis.three_pv.animate_path(
-            robot=self.robot,
-            q=observations,
-            kwargs_robot=dict(color="red"),
-            kwargs_world=dict(img=self.dataset.image[0], limits=limits, color="yellow"),
+        return collision_score
+
+    def render_given_sample(self, given_sample, n_samples=1, render_3d=False):
+        """
+        renders samples from (ema) diffusion model
+        Note: set get_cond_from_env to True if you want to get the conditions from the environment
+        """
+
+        conditions = to_device(given_sample.conditions, self.device)
+        normed_c = given_sample.conditions[0]
+
+        ## repeat each item in conditions `n_samples` times
+        conditions = apply_dict(
+            einops.repeat,
+            conditions,
+            "b d -> (repeat b) d",
+            repeat=n_samples,
         )
 
-        print(f"Collision score: {score}")
+        ## [ n_samples x horizon x (action_dim + observation_dim) ]
+        samples = self.model.conditional_sample(conditions)
+        samples = to_np(samples)
 
-        print(f"Min: {observations.min()}")
-        print(f"Max: {observations.max()}")
-        print(f"Mean: {observations.mean()}")
-        print(f"Std: {observations.std()}")
+        ## [ n_samples x horizon x observation_dim ]
+        normed_observations = samples[:, :, : self.dataset.action_dim[0]]
+        # print(f"Before unnormalizing: {normed_observations.shape}")
+        # [ 1 x 1 x observation_dim ]
+        normed_conditions = to_np(normed_c)[:, None]
+
+        ## [ n_samples x (horizon + 1) x observation_dim ]
+        observations = self.dataset.normalizer.unnormalize(normed_observations[0])
+        # print(f"After unnormalizing: {observations.shape}")
+
+        # Get collision_metric:
+        distance = robot_env_dist(
+            q=observations, robot=self.robot, img=self.dataset.image[0]
+        )
+        # Get collision score
+        score = analyze_distance(distance)
+
+        # Plot trajectories for all 8 frames
+        plot_trajectory_per_frames(observations)
+        # Plot Q values for each joint
+        plot_q_values_per_trajectory(observations)
+
+        # Render trajecotry in 3d space
+        if render_3d:
+            limits = np.array([[-1.25, +1.25], [-1.25, +1.25], [-1.25, +1.25]])
+            vis.three_pv.animate_path(
+                robot=self.robot,
+                q=observations,
+                kwargs_robot=dict(color="red"),
+                kwargs_world=dict(
+                    img=self.dataset.image[0], limits=limits, color="yellow"
+                ),
+            )
+        return score

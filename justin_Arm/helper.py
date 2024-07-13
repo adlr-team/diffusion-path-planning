@@ -16,6 +16,8 @@ def interpolate_trajectories(data, target_length):
     Returns:
     numpy.ndarray: Interpolated data of shape (X, target_length, 7)
     """
+    if data.ndim == 2:
+        data = np.expand_dims(data, axis=0)
     X, Y, joints = data.shape
     interpolated_data = np.zeros((X, target_length, joints))
 
@@ -84,23 +86,23 @@ def robot_env_dist(q, robot, img, n_voxels=64):
 
 def analyze_distance(distance):
     # Show the shape of the ndarray:
-    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    # Show true if the ndarray contains negative values:
-    print(f"np.any(distance < 0): {np.any(distance < 0)}")
-    # Show the negative values:
-    print(f"distance[distance < 0]: {distance[distance < 0]}")
-    # Show the number of negative values:
-    print(f"np.sum(distance < 0): {np.sum(distance < 0)}")
-    # Retrieve the indices within the df of the entries where the distance is negative:
-    print(f"np.where(distance < 0): {np.where(distance < 0)}")
+    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    # # Show true if the ndarray contains negative values:
+    # print(f"np.any(distance < 0): {np.any(distance < 0)}")
+    # # Show the negative values:
+    # print(f"distance[distance < 0]: {distance[distance < 0]}")
+    # # Show the number of negative values:
+    # print(f"np.sum(distance < 0): {np.sum(distance < 0)}")
+    # # Retrieve the indices within the df of the entries where the distance is negative:
+    # print(f"np.where(distance < 0): {np.where(distance < 0)}")
 
-    # Add up the values of the entries which are negative:
-    print(f"np.sum(distance[distance < 0]): {np.sum(distance[distance < 0])}")
-    print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    # # Add up the values of the entries which are negative:
+    # print(f"np.sum(distance[distance < 0]): {np.sum(distance[distance < 0])}")
+    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
     if np.any(distance < 0):
         collision_score = np.sum(distance[distance < 0])
     else:
         collision_score = 0
-    print(f"Collision_score: {collision_score}")
+    # print(f"Collision_score: {collision_score}")
     return collision_score
