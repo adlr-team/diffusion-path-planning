@@ -141,7 +141,7 @@ def get_params():
         help="Whether to use padding",
     )
     parser.add_argument(
-        "--max_path_length", type=int, default=10000, help="Maximum path length"
+        "--max_path_length", type=int, default=1000, help="Maximum path length"
     )
     parser.add_argument(
         "--user_name",

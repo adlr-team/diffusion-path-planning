@@ -387,3 +387,138 @@ class Trainer(object):
             if collision_count > 0:
                 print(f"Collision observations:")
                 self.renderer.composite(savepath, collisions_obs, env=env)
+
+
+
+    def render_samples_starting(
+        self,
+        env,
+        batch_size=1,
+        n_samples=1,
+        get_cond_from_env=False,
+        render_reference=False,
+        start_tensor= torch.tensor([0.0, 0.0]),
+        end_tensor = torch.tensor([0.0, 0.0])
+    ):
+        """
+        renders samples from (ema) diffusion model
+        Note: set get_cond_from_env to True if you want to get the conditions from the environment
+        """
+        for i in range(batch_size):
+
+            # print(batch.conditions)
+            # {0: tensor([[-0.5193,  0.4605, -0.1075, -0.0416]]), 255: tensor([[ 0.1836, -0.5136,  0.0587,  0.5159]])}
+
+            ## get a single datapoint
+            if get_cond_from_env:
+                zeros = torch.zeros((1, 2))
+                conditions = {}
+                conditions[255] = torch.cat(
+                    (torch.tensor(env.unwrapped.goal).reshape(1, -1), zeros), dim=0
+                ).reshape(1, -1)
+
+                conditions[0] = torch.cat(
+                    (
+                        torch.tensor(env.unwrapped.point_env.init_qpos[:2]).reshape(
+                            1, -1
+                        ),
+                        zeros,
+                    ),
+                    dim=0,
+                ).reshape(1, -1)
+
+                # We have to normalize the conditions before passign them to the model.
+                conditions[0] = self.dataset.normalizer.normalize(
+                    conditions[0], "observations"
+                )
+                conditions[255] = self.dataset.normalizer.normalize(
+                    conditions[255], "observations"
+                )
+                # Is this wrong?
+                normed_c = conditions[0]
+                conditions = to_device(conditions, self.device)
+
+            else:
+                zeros = torch.zeros((1, 2))
+                conditions = {}
+                conditions[255] = torch.cat(
+                    (torch.tensor(end_tensor).reshape(1, -1), zeros), dim=0
+                ).reshape(1, -1)
+
+                conditions[0] = torch.cat(
+                    (
+                        torch.tensor(start_tensor).reshape(
+                            1, -1
+                        ),
+                        zeros,
+                    ),
+                    dim=0,
+                ).reshape(1, -1)
+
+                # We have to normalize the conditions before passign them to the model.
+                conditions[0] = self.dataset.normalizer.normalize(
+                    conditions[0], "observations"
+                )
+                conditions[255] = self.dataset.normalizer.normalize(
+                    conditions[255], "observations"
+                )
+                # Is this wrong?
+                normed_c = conditions[0]
+                conditions = to_device(conditions, self.device)
+                render_reference = True
+
+            ## repeat each item in conditions `n_samples` times
+            conditions = apply_dict(
+                einops.repeat,
+                conditions,
+                "b d -> (repeat b) d",
+                repeat=n_samples,
+            )
+
+            ## [ n_samples x horizon x (action_dim + observation_dim) ]
+            samples = self.ema_model.conditional_sample(conditions)
+            samples = to_np(samples)
+
+            ## [ n_samples x horizon x observation_dim ]
+            normed_observations = samples[:, :, self.dataset.action_dim :]
+
+            # [ 1 x 1 x observation_dim ]
+            normed_conditions = to_np(normed_c)[:, None]
+
+            # from diffusion.datasets.preprocessing import blocks_cumsum_quat
+            # observations = conditions + blocks_cumsum_quat(deltas)
+            # observations = conditions + deltas.cumsum(axis=1)
+
+            ## [ n_samples x (horizon + 1) x observation_dim ]
+            normed_observations = np.concatenate(
+                [np.repeat(normed_conditions, n_samples, axis=0), normed_observations],
+                axis=1,
+            )
+
+            ## [ n_samples x (horizon + 1) x observation_dim ]
+            observations = self.dataset.normalizer.unnormalize(
+                normed_observations, "observations"
+            )
+
+            #### @TODO: remove block-stacking specific stuff
+            # from diffusion.datasets.preprocessing import blocks_euler_to_quat, blocks_add_kuka
+            # observations = blocks_add_kuka(observations)
+            ####
+            savepath = os.path.join(self.logdir, f"sample-{self.step}-{i}.png")
+            # if render_reference:
+            #     print("The trajectory from the dataset:")
+
+            #     self.render_reference(batch)
+
+            print("The trajectory generated by the diffusion model:")
+            collision_count, collisions_obs = self.count_and_get_collisions(
+                observations
+            )
+            print(f"Collision_count_diffusion_model : {collision_count}")
+            #wandb.log({"Collision count:": collision_count})
+
+            self.renderer.composite(savepath, observations, env=env)
+            # print(f"Collision observations: {collisions_obs}")
+            if collision_count > 0:
+                print(f"Collision observations:")
+                self.renderer.composite(savepath, collisions_obs, env=env)
