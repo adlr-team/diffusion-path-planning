@@ -215,7 +215,7 @@ class Justin_Trainer(object):
                     f"{self.step}: {loss.item():8.4f} | {infos_str} | t: {timer():8.4f}"
                 )
 
-                self.step += 1
+            self.step += 1
 
         self.model.eval()
         val_loss = 0.0
@@ -425,9 +425,16 @@ class Justin_Trainer(object):
             "b d -> (repeat b) d",
             repeat=n_samples,
         )
+        # Iterate over the keys in the conditions dictionary
+        for key in conditions.keys():
+            conditions[key] = conditions[key] + 0.001 * torch.randn_like(
+                conditions[key]
+            )
+        # Add very msall perturbation to the conditions
 
         ## [ n_samples x horizon x (action_dim + observation_dim) ]
-        samples = self.model.conditional_sample(conditions)
+        print(conditions[0].shape)
+        samples = self.ema_model.conditional_sample(conditions)
         samples = to_np(samples)
 
         ## [ n_samples x horizon x observation_dim ]

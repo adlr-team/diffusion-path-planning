@@ -1,5 +1,6 @@
 import pdb
 from collections import namedtuple
+from multiprocessing import Pool
 
 import numpy as np
 import torch
@@ -14,7 +15,6 @@ from .buffer import ReplayBuffer
 from .d4rl import load_environment, sequence_dataset
 from .normalization import DatasetNormalizer, LimitsNormalizer
 from .preprocessing import get_preprocess_fn
-from multiprocessing import Pool
 
 Batch = namedtuple("Batch", "trajectories conditions")
 ValueBatch = namedtuple("ValueBatch", "trajectories conditions values")
@@ -213,7 +213,7 @@ class TrajectoryDataset(torch.utils.data.Dataset):
         self.dataset = self._batch_process(dataset, num_workers)
         self.action_dim = (7,)
         self.normalizer = LimitsNormalizer(
-            self.dataset
+            interpolate_trajectories(dataset, horizon)
         )  # Store normalizer for later use
 
     def _batch_process(self, dataset, num_workers):
