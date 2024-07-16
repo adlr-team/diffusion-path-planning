@@ -4,6 +4,8 @@ from turtle import color
 import matplotlib
 
 matplotlib.use("Agg")  # or 'Qt5Agg', depending on your system
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
@@ -14,7 +16,7 @@ from justin_arm.helper import interpolate_trajectories
 
 # First plot: 3D Path for the different joints over 20 Waypoints
 # Create a colormap
-def plot_trajectory_per_frames(q_paths):
+def plot_trajectory_per_frames(q_paths, savepath=os.getcwd(), name="default"):
     """
     Plots the trajectory of the 8 frames of JustinArm for a single path.
 
@@ -32,7 +34,7 @@ def plot_trajectory_per_frames(q_paths):
     trajectory_length, frame_num, _, _ = frames.shape
     colors = plt.cm.jet(np.linspace(0, 1, trajectory_length))
     # First plot: Trajectory of the 8 Frames of JustinArm
-    plt.ion()  # Enable interactive mode
+    # plt.ion()  # Enable interactive mode
 
     fig1 = plt.figure()
     ax1 = fig1.add_subplot(111, projection="3d")
@@ -74,6 +76,8 @@ def plot_trajectory_per_frames(q_paths):
     ax1.set_ylabel("Y")
     ax1.set_zlabel("Z")
     ax1.set_title("Trajectory of the 8 Frames of JustinArm")
+    plt.savefig(f"{savepath}/trajectory_per_frame_{name}.png")
+    plt.show()
 
 
 def plot_multiple_trajectories(q_paths, sampling_num):
@@ -90,54 +94,46 @@ def plot_multiple_trajectories(q_paths, sampling_num):
 
     # Define robot and colormap
     robot = robots.JustinArm07()
-    colors = plt.cm.jet(np.linspace(0, 1, 20))
 
     # Get shape of q_paths array
     num_trajectories, waypoints, _ = q_paths.shape
+    colors = plt.cm.jet(np.linspace(0, 1, waypoints))
 
     # Second plot: End-effector trajectory for multiple paths
     fig2 = plt.figure()
     ax2 = fig2.add_subplot(111, projection="3d")
 
-    # Retrieve trajectory_num amount of samples from frames across the first dimension
-    # Randomly sample indices
-    random_indices = np.random.choice(num_trajectories, sampling_num, replace=False)
-    # Create a new array with the sampled rows
-    sampled_paths = q_paths[random_indices, :, :]
-
     # Iterate over each path (20 paths)
-    for i in range(sampling_num):
+    for i in range(num_trajectories):
         x_coords = []
         y_coords = []
         z_coords = []
-        frames = robot.get_frames(sampled_paths[i])
+        frames = robot.get_frames(q_paths[i])
 
-        # Iterate over each waypoint
-        for waypoint_idx in range(waypoints):
-            # Extract the homogeneous matrix for the current robot and waypoint
-            matrix = frames[waypoint_idx, 7, :, :]
-            # Extract the X, Y, Z coordinates (assuming they are in the last row and first three columns)
-            x = matrix[0, 3]
-            y = matrix[1, 3]
-            z = matrix[2, 3]
+        for j in range(waypoints):
+            x_coords.append(frames[j, 4, 0, 3])
+            y_coords.append(frames[j, 4, 1, 3])
+            z_coords.append(frames[j, 4, 2, 3])
 
-            # Append the coordinates to the respective lists
-            x_coords.append(x)
-            y_coords.append(y)
-            z_coords.append(z)
-
-        # Plot the path for the current robot with black line and scatter points with color gradient
-        ax2.scatter(x_coords, y_coords, z_coords, c=colors, zorder=10)
+        # Plot the path for the current robot with a distinct color
+        # ax2.scatter(
+        #     x_coords, y_coords, z_coords, c=[colors[i]] * len(x_coords), marker="o"
+        # )
+        ax2.plot(
+            x_coords, y_coords, z_coords, color=colors[i], label=f"Trajectory {i+1}"
+        )
 
     # Add labels and legend
     ax2.set_xlabel("X")
     ax2.set_ylabel("Y")
     ax2.set_zlabel("Z")
     ax2.set_title("End-effector trajectory for multiple paths")
+    ax2.legend()
+    plt.savefig("end_effector_trajectory.png")
     plt.show()
 
 
-def plot_q_values_per_trajectory(q_paths):
+def plot_q_values_per_trajectory(q_paths, savepath=os.getcwd(), name="default"):
     """
     Plot the Q-values over the waypoints for each joint in the robot.
 
@@ -177,25 +173,26 @@ def plot_q_values_per_trajectory(q_paths):
 
     # Adjust layout to prevent overlap
     plt.tight_layout()
-
     # Show the third plot
+    plt.savefig(f"{savepath}/q_values_{name}.png")
+
     plt.show()
 
 
 # # Load numpy ndarray:
-# image_4123 = np.load("justin_arm/data/image_4123.npy")
-# paths = np.load("justin_arm/data/q_paths_4123.npy")
-# print(f"Paths:{paths.shape}")
+image_4123 = np.load("justin_arm/data/image_4123.npy")
+paths = np.load("justin_arm/data/q_paths_4123.npy")
+print(f"Paths:{paths.shape}")
 
 
 # # Load robot
-# robot = robots.JustinArm07()
-# frames = robot.get_frames(paths[0])
+robot = robots.JustinArm07()
+frames = robot.get_frames(paths[0])
 
 # # Interpolate the trajectories
 # paths = interpolate_trajectories(paths, 100)
 
 # # Test the functions
-# plot_trajectory_per_frames(paths[0])
+plot_trajectory_per_frames(paths[0])
 # plot_q_values_per_trajectory(paths[:10])
 # plot_multiple_trajectories(paths, 20)

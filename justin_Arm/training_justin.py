@@ -14,8 +14,10 @@ from diffuser.utils.arrays import apply_dict, batch_to_device, to_device, to_np
 from diffuser.utils.cloud import sync_logs
 from diffuser.utils.timer import Timer
 from justin_arm.helper import analyze_distance, robot_env_dist
-from justin_arm.visualize import (plot_q_values_per_trajectory,
-                                  plot_trajectory_per_frames)
+from justin_arm.visualize import (
+    plot_q_values_per_trajectory,
+    plot_trajectory_per_frames,
+)
 
 
 def cycle(dl):
@@ -127,7 +129,7 @@ class Justin_Trainer(object):
         if self.step < self.step_start_ema:
             self.reset_parameters()
             return
-        self.ema_model.to("cuda")
+        self.ema_model.to(self.device)
         self.ema.update_model_average(self.ema_model, self.model)
 
     # -----------------------------------------------------------------------------#
@@ -172,7 +174,6 @@ class Justin_Trainer(object):
 
         timer = Timer()
         for step in range(n_train_steps):
-            wandb.log({"Training_steps": step})
 
             for i in range(self.gradient_accumulate_every):
                 batch = next(self.dataloader)
@@ -188,7 +189,6 @@ class Justin_Trainer(object):
 
             if self.step % self.update_ema_every == 0:
                 self.step_ema()
-
             # Log
             if self.step % self.log_freq == 0:
                 infos_str = " | ".join(
@@ -207,6 +207,7 @@ class Justin_Trainer(object):
                 wandb.log({"Collision Score": collision_score})
 
         wandb.log({"Time per episode": timer()})
+        wandb.log({"Training_steps": self.step})
 
     def save(self, epoch):
         """
@@ -267,7 +268,7 @@ class Justin_Trainer(object):
         )
 
         ## [ n_samples x horizon x (action_dim + observation_dim) ]
-        samples = self.ema_model.conditional_sample(conditions)
+        samples = self.model.conditional_sample(conditions)
         samples = to_np(samples)
 
         ## [ n_samples x horizon x observation_dim ]
@@ -292,6 +293,20 @@ class Justin_Trainer(object):
         # Get collision score
         collision_score = analyze_distance(distance)
 
+        # Plot original_reference_data:
+        self.plot_reference_data(batch)
+
+        print("Diffused trajectory:")
+        print(f"Collision score: {collision_score}")
+        plot_trajectory_per_frames(
+            observations, savepath=self.logdir, name=str(self.step)
+        )
+        plot_q_values_per_trajectory(
+            observations, savepath=self.logdir, name=str(self.step)
+        )
+
+        # Plot diffused
+
         # Render 3D
         if render_3d:
             limits = np.array([[-1.25, +1.25], [-1.25, +1.25], [-1.25, +1.25]])
@@ -305,6 +320,48 @@ class Justin_Trainer(object):
             )
 
         return collision_score
+
+    def plot_reference_data(self, batch, render_3d=False):
+        """
+        Plots the reference data for the batch
+        """
+        trajectory = batch.trajectories.numpy()
+
+        ## [ n_samples x horizon x observation_dim ]
+        normed_observations = trajectory[:, :, : self.dataset.action_dim[0]]
+
+        ## [ n_samples x (horizon + 1) x observation_dim ]
+        observations = self.dataset.normalizer.unnormalize(normed_observations[0])
+        # print(f"After unnormalizing: {observations.shape}")
+
+        # Get collision_metric:
+        distance = robot_env_dist(
+            q=observations, robot=self.robot, img=self.dataset.image[0]
+        )
+
+        score = analyze_distance(distance)
+
+        print("Reference trajectory:")
+        print(f"Collision score: {score}")
+        plot_trajectory_per_frames(
+            observations, savepath=self.logdir, name="reference_" + str(self.step)
+        )
+        plot_q_values_per_trajectory(
+            observations, savepath=self.logdir, name="_reference_" + str(self.step)
+        )
+
+        # Render 3D
+        if render_3d:
+            limits = np.array([[-1.25, +1.25], [-1.25, +1.25], [-1.25, +1.25]])
+            vis.three_pv.animate_path(
+                robot=self.robot,
+                q=observations,
+                kwargs_robot=dict(color="red"),
+                kwargs_world=dict(
+                    img=self.dataset.image[0], limits=limits, color="yellow"
+                ),
+            )
+        return score
 
     def render_given_sample(self, given_sample, n_samples=1, render_3d=False):
         """
@@ -360,4 +417,4 @@ class Justin_Trainer(object):
                     img=self.dataset.image[0], limits=limits, color="yellow"
                 ),
             )
-        return score
+        return observations, score
