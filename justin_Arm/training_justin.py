@@ -53,6 +53,7 @@ class Justin_Trainer(object):
         self,
         diffusion_model,
         dataset,
+        val_dataset,
         device,
         robot,
         name,
@@ -90,10 +91,21 @@ class Justin_Trainer(object):
         self.device = device
         self.robot = robot
         self.dataset = dataset
+        self.val_dataset = val_dataset
         self.dataloader = cycle(
             torch.utils.data.DataLoader(
                 self.dataset,
-                batch_size=train_batch_size,
+                batch_size=self.batch_size,
+                num_workers=0,
+                shuffle=True,
+                pin_memory=True,
+                generator=torch.Generator(device="cpu"),
+            )
+        )
+        self.val_dataloader = cycle(
+            torch.utils.data.DataLoader(
+                self.val_dataset,
+                batch_size=self.batch_size,
                 num_workers=0,
                 shuffle=True,
                 pin_memory=True,
@@ -171,10 +183,14 @@ class Justin_Trainer(object):
             self.save(self.step)
 
     def train(self, n_train_steps):
-
         timer = Timer()
-        for step in range(n_train_steps):
+        best_val_loss = float("inf")
+        patience = 2
+        epochs_no_improve = 0
 
+        for step in range(n_train_steps):
+            # Training step
+            self.model.train()
             for i in range(self.gradient_accumulate_every):
                 batch = next(self.dataloader)
                 batch = batch_to_device(batch, self.device)
@@ -194,18 +210,48 @@ class Justin_Trainer(object):
                 infos_str = " | ".join(
                     [f"{key}: {val:8.4f}" for key, val in infos.items()]
                 )
-                wandb.log({"Model Loss": loss})
-                print(f"{self.step}: {loss:8.4f} | {infos_str} | t: {timer():8.4f}")
+                wandb.log({"Model Loss per step": loss.item()})
+                print(
+                    f"{self.step}: {loss.item():8.4f} | {infos_str} | t: {timer():8.4f}"
+                )
 
-            self.step += 1
-            # Render samples
-            if self.step % self.save_freq == 0:
-                print(f"Saving model at step {self.step}")
-                self.save(self.step)
-                print(f"Rendering samples")
-                collision_score = self.render_sample()
-                wandb.log({"Collision Score": collision_score})
+                self.step += 1
 
+        self.model.eval()
+        val_loss = 0.0
+        val_infos = {}
+        with torch.no_grad():
+            # Get only one batch from the validation dataloader
+            val_batch = next(self.val_dataloader)
+            val_batch = batch_to_device(val_batch, self.device)
+            val_batch_loss, val_batch_infos = self.model.loss(*val_batch)
+            val_loss = val_batch_loss.item()
+
+            for key, val in val_batch_infos.items():
+                val_infos[key] = val
+
+        val_infos_str = " | ".join(
+            [f"{key}: {val:8.4f}" for key, val in val_infos.items()]
+        )
+        wandb.log({"Validation Loss": val_loss})
+        print(f"Validation {self.step}: {val_loss:8.4f} | {val_infos_str}")
+
+        # Early stopping based on validation loss
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            epochs_no_improve = 0
+            print(f"Validation loss improved, saving model at step {self.step}")
+            self.save(self.step)
+        else:
+            epochs_no_improve += 1
+
+        if epochs_no_improve >= patience:
+            print(f"Early stopping triggered after {self.step} steps")
+
+        # Render samples at the specified frequency
+        print(f"Rendering samples")
+        collision_score = self.render_sample()
+        wandb.log({"Collision Score": collision_score})
         wandb.log({"Time per episode": timer()})
         wandb.log({"Training_steps": self.step})
 
