@@ -360,6 +360,53 @@ class MazeRenderer:
         img = plot2img(fig, remove_margins=self._remove_margins)
         plt.show()
         return img
+    
+
+    def renders_list(self, savepath, observations_list, env=None):
+        plt.clf()
+        fig = plt.gcf()
+        # fig.set_size_inches(5, 5)
+        plt.imshow(
+            np.array((self._background)),
+            extent=self.extent,
+            cmap=plt.cm.binary,
+        )
+
+        # goal = env.unwrapped.goal
+        # starting = env.unwrapped.point_env.init_qpos[:2]
+        colormaps = [
+            'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
+            'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
+            'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn'
+        ]
+        
+
+        for idx, observations in enumerate(observations_list):
+            path_length = len(observations[0])
+            cmap = plt.get_cmap(colormaps[idx % len(colormaps)])
+            colors = cmap(np.linspace(0.2, 1, path_length))
+            #colors = plt.cm.jet(np.linspace(0, 1, path_length))
+
+            #plt.plot(observations[0][:, 0], observations[0][:, 1], c="black", zorder=10)
+            plt.scatter(observations[0][:, 0], observations[0][:, 1], c=colors, zorder=20)
+
+        # Plot the goal as a red ball
+        # Have to apply 0 input to get the current state
+        # observation_size = plt.scatter(
+        #     observations[:, 0], observations[:, 1]
+        # ).get_sizes()[0]
+        # plt.scatter(goal[0], goal[1], c="green", marker="*", s=4 * observation_size)
+        # plt.scatter(
+        #     starting[0], starting[1], c="black", marker="D", s=4 * observation_size
+        # )
+
+        # plt.scatter(observations[-1, 0], observations[-1, 1], c="red", marker="D")
+
+        plt.axis("on")
+        
+        img = plot2img(fig, remove_margins=self._remove_margins)
+        plt.show()
+        return img
 
     def composite(self, savepath, paths, env=None, ncol=1, **kwargs):
         """
