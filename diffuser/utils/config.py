@@ -199,7 +199,7 @@ def get_params():
     parser.add_argument(
         "--cuda",
         action="store_true",
-        default=True,
+        default=False,
         help="Whether to use padding",
     )
 
