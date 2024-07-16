@@ -179,20 +179,20 @@ def plot_q_values_per_trajectory(q_paths, savepath=os.getcwd(), name="default"):
     plt.show()
 
 
-# # Load numpy ndarray:
-image_4123 = np.load("justin_arm/data/image_4123.npy")
-paths = np.load("justin_arm/data/q_paths_4123.npy")
-print(f"Paths:{paths.shape}")
+# # # Load numpy ndarray:
+# image_4123 = np.load("justin_arm/data/image_4123.npy")
+# paths = np.load("justin_arm/data/q_paths_4123.npy")
+# print(f"Paths:{paths.shape}")
 
 
-# # Load robot
-robot = robots.JustinArm07()
-frames = robot.get_frames(paths[0])
+# # # Load robot
+# robot = robots.JustinArm07()
+# frames = robot.get_frames(paths[0])
 
-# # Interpolate the trajectories
-# paths = interpolate_trajectories(paths, 100)
+# # # Interpolate the trajectories
+# # paths = interpolate_trajectories(paths, 100)
 
-# # Test the functions
-plot_trajectory_per_frames(paths[0])
-# plot_q_values_per_trajectory(paths[:10])
-# plot_multiple_trajectories(paths, 20)
+# # # Test the functions
+# plot_trajectory_per_frames(paths[0])
+# # plot_q_values_per_trajectory(paths[:10])
+# # plot_multiple_trajectories(paths, 20)

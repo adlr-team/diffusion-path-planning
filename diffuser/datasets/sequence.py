@@ -4,16 +4,17 @@ from collections import namedtuple
 import numpy as np
 import torch
 
-# from justin_Arm.helper import (
-#     condition_start_end_per_trajectory,
-#     create_state_action_array,
-#     interpolate_trajectories,
-# )
+from justin_arm.helper import (
+    condition_start_end_per_trajectory,
+    create_state_action_array,
+    interpolate_trajectories,
+)
 
 from .buffer import ReplayBuffer
 from .d4rl import load_environment, sequence_dataset
 from .normalization import DatasetNormalizer, LimitsNormalizer
 from .preprocessing import get_preprocess_fn
+from multiprocessing import Pool
 
 Batch = namedtuple("Batch", "trajectories conditions")
 ValueBatch = namedtuple("ValueBatch", "trajectories conditions values")
@@ -192,26 +193,50 @@ class ValueDataset(SequenceDataset):
         return value_batch
 
 
+def process_batch(batch, horizon):
+    interpolated_data = interpolate_trajectories(batch, horizon)
+    print("Interpolated_data shape: ", interpolated_data.shape)
+    normalizer = LimitsNormalizer(interpolated_data)
+    normalized_data = normalizer.normalize(interpolated_data)
+    print(f"Normalized data shape: {normalized_data.shape}")
+    return normalizer.normalize(interpolated_data)
+
+
 class TrajectoryDataset(torch.utils.data.Dataset):
 
-    def __init__(
-        self,
-        dataset,
-        horizon,
-        image,
-    ):
-        self.dataset = interpolate_trajectories(dataset, horizon)
-        self.action_dim = (7,)
+    def __init__(self, dataset, horizon, image, num_workers=6, batch_size=100000):
         self.horizon = horizon
         self.image = image
-        self.normalizer = self.normalizer = LimitsNormalizer(self.dataset)
-        self.normalized_data = self.normalizer.normalize(self.dataset)
+        self.batch_size = batch_size
+
+        # Process dataset in batches
+        self.dataset = self._batch_process(dataset, num_workers)
+        self.action_dim = (7,)
+        self.normalizer = LimitsNormalizer(
+            self.dataset
+        )  # Store normalizer for later use
+
+    def _batch_process(self, dataset, num_workers):
+        # Split dataset into batches
+        batches = [
+            dataset[i : i + self.batch_size]
+            for i in range(0, len(dataset), self.batch_size)
+        ]
+
+        # Process batches in parallel
+        with Pool(num_workers) as pool:
+            normalized_batches = pool.starmap(
+                process_batch, [(batch, self.horizon) for batch in batches]
+            )
+
+        # Concatenate normalized batches
+        return np.concatenate(normalized_batches, axis=0)
 
     def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, idx):
-        trajectory = self.normalized_data[idx]
+        trajectory = self.dataset[idx]
         conditions = condition_start_end_per_trajectory(trajectory)
         stacked_array, actions = create_state_action_array(trajectory)
         batch = Batch(stacked_array, conditions)
