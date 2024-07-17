@@ -103,7 +103,7 @@ def get_params():
 
     # General parameters for torch:
     parser.add_argument(
-        "--seed", type=int, default=5, help="Random seed for numpy/torch"
+        "--seed", type=int, default=100, help="Random seed for numpy/torch"
     )
     parser.add_argument(
         "--n_training_threads",
@@ -199,7 +199,7 @@ def get_params():
     parser.add_argument(
         "--cuda",
         action="store_true",
-        default=False,
+        default=True,
         help="Whether to use padding",
     )
 
