@@ -1,3 +1,0 @@
-- Commented justin import on sequence.py
-- Decrease max step lenght in config from 10000 to 1000 because doesn't fit my memory locally
-- Added render_samples_starting function to training.py
