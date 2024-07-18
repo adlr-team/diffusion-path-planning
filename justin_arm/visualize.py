@@ -80,7 +80,7 @@ def plot_trajectory_per_frames(q_paths, savepath=os.getcwd(), name="default"):
     plt.show()
 
 
-def plot_multiple_trajectories(q_paths, sampling_num):
+def plot_multiple_trajectories(q_paths, sampling_num=10):
     """
     Plots multiple trajectories of the end-effector given a sample number.
 
@@ -127,8 +127,7 @@ def plot_multiple_trajectories(q_paths, sampling_num):
     ax2.set_xlabel("X")
     ax2.set_ylabel("Y")
     ax2.set_zlabel("Z")
-    ax2.set_title("End-effector trajectory for multiple paths")
-    ax2.legend()
+    ax2.set_title("Diffused end-effector trajectory for fixed start and end conditions")
     plt.savefig("end_effector_trajectory.png")
     plt.show()
 
@@ -170,6 +169,7 @@ def plot_q_values_per_trajectory(q_paths, savepath=os.getcwd(), name="default"):
 
     # Remove the 8th (extra) subplot
     fig3.delaxes(axs[-1])
+    ax.set_title("Diffused Q-values for 7DoF JustinArm")
 
     # Adjust layout to prevent overlap
     plt.tight_layout()
@@ -177,22 +177,3 @@ def plot_q_values_per_trajectory(q_paths, savepath=os.getcwd(), name="default"):
     plt.savefig(f"{savepath}/q_values_{name}.png")
 
     plt.show()
-
-
-# # # Load numpy ndarray:
-# image_4123 = np.load("justin_arm/data/image_4123.npy")
-# paths = np.load("justin_arm/data/q_paths_4123.npy")
-# print(f"Paths:{paths.shape}")
-
-
-# # # Load robot
-# robot = robots.JustinArm07()
-# frames = robot.get_frames(paths[0])
-
-# # # Interpolate the trajectories
-# # paths = interpolate_trajectories(paths, 100)
-
-# # # Test the functions
-# plot_trajectory_per_frames(paths[0])
-# # plot_q_values_per_trajectory(paths[:10])
-# # plot_multiple_trajectories(paths, 20)

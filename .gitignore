@@ -3,3 +3,4 @@
 wandb/
 /saved/*.pkl
 /saved_justin/*.pkl
+justin_arm/data/q_paths_train_dataset.npy

@@ -62,7 +62,17 @@ def create_state_action_array(q_values):
 
 
 def condition_start_end_per_trajectory(q_path):
+    """
+    Calculates the start and end conditions for each trajectory in q_path.
 
+    Parameters:
+    q_path (numpy.ndarray): An array of shape (n_waypoints, n_joints) containing the waypoints for each joint.
+
+    Returns:
+    dict: A dictionary containing the start and end conditions for each trajectory.
+          The keys are the indices of the trajectories, and the values are torch tensors of shape (n_joints,)
+          representing the start and end conditions.
+    """
     # Store the dimensions of q_path in here
     n_waypoints, n_joints = q_path.shape
     # Start condition is the 7th joint of the first waypoint
@@ -76,6 +86,18 @@ def condition_start_end_per_trajectory(q_path):
 
 
 def robot_env_dist(q, robot, img, n_voxels=64):
+    """
+    Calculates the distance between the robot and the environment.
+
+    Parameters:
+    q (numpy.ndarray): An array of shape (n_joints,) containing the joint values of the robot.
+    robot (Robot): An instance of the Robot class representing the robot.
+    img (numpy.ndarray): An array representing the environment image.
+    n_voxels (int): The number of voxels used for discretization. Default is 64.
+
+    Returns:
+    numpy.ndarray: An array of shape (n_spheres,) containing the distances between the robot and the environment.
+    """
     voxel_size = 2.5 / n_voxels
     limits = np.array([[-1.25, +1.25], [-1.25, +1.25], [-1.25, +1.25]])
     dimg = img2dist_img(img=img, voxel_size=voxel_size, add_boundary=False)
@@ -85,24 +107,17 @@ def robot_env_dist(q, robot, img, n_voxels=64):
 
 
 def analyze_distance(distance):
-    # Show the shape of the ndarray:
-    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    # # Show true if the ndarray contains negative values:
-    # print(f"np.any(distance < 0): {np.any(distance < 0)}")
-    # # Show the negative values:
-    # print(f"distance[distance < 0]: {distance[distance < 0]}")
-    # # Show the number of negative values:
-    # print(f"np.sum(distance < 0): {np.sum(distance < 0)}")
-    # # Retrieve the indices within the df of the entries where the distance is negative:
-    # print(f"np.where(distance < 0): {np.where(distance < 0)}")
+    """
+    Analyzes the distance values and calculates the collision score.
 
-    # # Add up the values of the entries which are negative:
-    # print(f"np.sum(distance[distance < 0]): {np.sum(distance[distance < 0])}")
-    # print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    Parameters:
+    distance (numpy.ndarray): An array of shape (n_spheres,) containing the distance values.
 
+    Returns:
+    float: The collision score, which is the sum of all negative distance values.
+    """
     if np.any(distance < 0):
         collision_score = np.sum(distance[distance < 0])
     else:
         collision_score = 0
-    # print(f"Collision_score: {collision_score}")
     return collision_score
