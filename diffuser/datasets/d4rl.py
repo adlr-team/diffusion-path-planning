@@ -8,8 +8,8 @@ import gymnasium as gym
 import numpy as np
 from minari import list_local_datasets, load_dataset
 
-
-
+import torch
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 @contextmanager
 def suppress_output():
     """

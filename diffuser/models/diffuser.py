@@ -8,7 +8,7 @@ import diffuser.utils as utils
 
 from .helpers import Losses, apply_conditioning, cosine_beta_schedule, extract
 
-
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class GaussianDiffusion(nn.Module):
     def __init__(
         self,

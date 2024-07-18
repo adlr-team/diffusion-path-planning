@@ -17,7 +17,7 @@ def to_np(x):
     return x
 
 
-def to_torch(x, dtype=None, device="cpu"):
+def to_torch(x, dtype=None, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
     dtype = dtype or DTYPE
     if type(x) is dict:
         return {k: to_torch(v, dtype, device) for k, v in x.items()}
@@ -26,7 +26,7 @@ def to_torch(x, dtype=None, device="cpu"):
     return torch.tensor(x, dtype=dtype, device=device)
 
 
-def to_device(x, device="cpu"):
+def to_device(x, device=torch.device('cuda' if torch.cuda.is_available() else 'cpu')):
 
     if torch.is_tensor(x):
         return x.to(device)

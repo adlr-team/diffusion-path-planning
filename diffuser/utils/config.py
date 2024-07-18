@@ -33,7 +33,7 @@ def import_class(_class):
 
 class Config(collections.abc.Mapping):
 
-    def __init__(self, _class, verbose=True, savepath=None, device="cpu", **kwargs):
+    def __init__(self, _class, verbose=True, savepath=None, device="cuda", **kwargs):
         self._class = import_class(_class)
         self._device = device
         self._dict = {}
@@ -199,7 +199,7 @@ def get_params():
     parser.add_argument(
         "--cuda",
         action="store_true",
-        default=False,
+        default=True,
         help="Whether to use padding",
     )
 

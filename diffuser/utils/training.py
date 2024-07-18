@@ -49,7 +49,7 @@ class Trainer(object):
         dataset,
         renderer,
         device,
-        name,
+        name="",
         ema_decay=0.995,
         train_batch_size=32,
         train_lr=2e-5,
@@ -87,20 +87,20 @@ class Trainer(object):
             torch.utils.data.DataLoader(
                 self.dataset,
                 batch_size=train_batch_size,
-                num_workers=8,
+                num_workers=0,
                 shuffle=True,
-                pin_memory=True,
-                generator=torch.Generator(device="cpu"),
+                pin_memory=False,
+                generator=torch.Generator(device="cuda"),
             )
         )
         self.dataloader_vis = cycle(
             torch.utils.data.DataLoader(
                 self.dataset,
                 batch_size=1,
-                num_workers=8,
+                num_workers=0,
                 shuffle=True,
-                pin_memory=True,
-                generator=torch.Generator(device="cpu"),
+                pin_memory=False,
+                generator=torch.Generator(device="cuda"),
             )
         )
         self.renderer = renderer
@@ -150,9 +150,9 @@ class Trainer(object):
             if self.step % self.update_ema_every == 0:
                 self.step_ema()
 
-            # if self.step % self.save_freq == 0:
-            #     label = self.step
-            #     self.save(label)
+            if self.step % self.save_freq == 0:
+                label = self.step
+                self.save(label)
 
             if self.step % self.log_freq == 0:
                 infos_str = " | ".join(
