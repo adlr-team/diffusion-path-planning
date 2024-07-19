@@ -51,9 +51,9 @@ class Args:
 
 args = Args(
     loader="datasets.sequence.GoalDataset",
-    savepath="saved_large/",
-    dataset="PointMaze_Large-v3",
-    horizon=320,
+    savepath="saved_medium/",
+    dataset="PointMaze_Medium-v3",
+    horizon=256,
     normalizer="LimitsNormalizer",
     preprocess_fns=["maze2d_set_terminals"],
     use_padding=False,
@@ -112,7 +112,7 @@ model = model_config()
 diffusion_config = Config(
     _class="models.diffuser.GaussianDiffusion",
     savepath=(args.savepath, "diffusion_config.pkl"),
-    horizon=320,
+    horizon=256,
     observation_dim=observation_dim,
     action_dim=2,
     n_timesteps=256,
@@ -184,7 +184,7 @@ if use_wandb:
 
 
 # n_epochs = int(args.n_train_steps // args.n_steps_per_epoch)
-n_epochs = 10
+n_epochs = 70
 for i in range(n_epochs):
     print(f"Epoch {i} / {n_epochs} | {args.savepath}")
     trainer.train(n_train_steps=1000)

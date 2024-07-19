@@ -359,6 +359,7 @@ class MazeRenderer:
         plt.title(title)
         img = plot2img(fig, remove_margins=self._remove_margins)
         plt.show()
+        
         return img
     
 
@@ -374,21 +375,27 @@ class MazeRenderer:
 
         # goal = env.unwrapped.goal
         # starting = env.unwrapped.point_env.init_qpos[:2]
-        colormaps = [
-            'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
-            'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
-            'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn'
-        ]
+        # colormaps = [
+        #     'Purples', 'Blues', 'Greens', 'Oranges', 'Reds',
+        #     'YlOrBr', 'YlOrRd', 'OrRd', 'PuRd', 'RdPu', 'BuPu',
+        #     'GnBu', 'PuBu', 'YlGnBu', 'PuBuGn', 'BuGn', 'YlGn'
+        # ]
+
+        def get_colors(num_colors):
+            # Generate a list of colors using a colormap
+            colormap = plt.get_cmap("inferno", num_colors)
+            return [colormap(i) for i in range(num_colors)]
         
+        colorlist = get_colors(len(observations_list))
 
         for idx, observations in enumerate(observations_list):
-            path_length = len(observations[0])
-            cmap = plt.get_cmap(colormaps[idx % len(colormaps)])
-            colors = cmap(np.linspace(0.2, 1, path_length))
+            # path_length = len(observations[0])
+            # cmap = plt.get_cmap(colormaps[idx % len(colormaps)])
+            # colors = cmap(np.linspace(0.2, 1, path_length))
             #colors = plt.cm.jet(np.linspace(0, 1, path_length))
 
             #plt.plot(observations[0][:, 0], observations[0][:, 1], c="black", zorder=10)
-            plt.scatter(observations[0][:, 0], observations[0][:, 1], c=colors, zorder=20)
+            plt.scatter(observations[0][:, 0], observations[0][:, 1], c=colorlist[idx], zorder=20)
 
         # Plot the goal as a red ball
         # Have to apply 0 input to get the current state
@@ -406,6 +413,8 @@ class MazeRenderer:
         
         img = plot2img(fig, remove_margins=self._remove_margins)
         plt.show()
+        imageio.imsave(savepath, img)
+        print(f"Saved avg. samples to: {savepath}")
         return img
 
     def composite(self, savepath, paths, env=None, ncol=1, **kwargs):
