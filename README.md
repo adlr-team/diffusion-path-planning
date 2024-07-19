@@ -1,6 +1,25 @@
-[Colab Link](https://colab.research.google.com/drive/152ADFBIZr6j0fMgLpPGvfBC0XEKoY76f?usp=sharing)
+# Robotic Path Planning Using Diffusion Models
 
-[Colab Christophe](https://colab.research.google.com/drive/1QDwWmu8kRxZFI6nRI6nbOu31eYmYEywE?usp=sharing)
+This project was conducted as part of the Advanced Deep Learning in Robotics (ADLR) course at the Learning AI for Dexterous Robots lab of Prof. Dr. Berthold Bäuml, in cooperation with the German Aerospace Center (DLR). The aim was to explore the usage of diffusion models for robotic path planning.
+We reference the work of Janner et al. [Diffuser](https://github.com/jannerm/diffuser).
+
+We explored diffusion models for path planning in 2D and 3D environments. Initially applied to the 2D Pointmaze-medium, we then extended our work to the Kuka Robot LWR3.
+
+### 2D Pointmaze-Medium
+
+<p align="center">
+    <img src="visualizations/maze2d_dataset.png" alt="2D Pointmaze-medium" width="45%" style="margin-right: 10px;">
+    <img src="visualizations/maze2d_planning.png" alt="2D Pointmaze-medium" width="45%">
+</p>
+
+### Kuka Robot LWR3
+
+<p align="center">
+    <img src="visualizations/kuka_lwr3_environment.png" alt="Kuka Robot LWR3" width="45%" style="margin-right: 10px;">
+    <img src="visualizations/diffused_q_values.png" alt="Diffused Q-Values" width="45%">
+</p>
+
+
 
 ## Getting started
 
@@ -31,25 +50,3 @@ To get started, follow these steps:
     ```shell
     poetry update
     ```
-
-
-
-
-    # Implementation Notes
-- This is based on the maze2d branch from Janner
-- I added  device = "cpu" to the config.py file, line 24 and 67. Fix them when you want CUDA
-- In Maze2D branch, the temporal.py and helpers.py are the same as the main branch, but the diffusion.py is slightly different
-- In the script folder, planmaze2d and train are relevant for us.
-- setup.py has the Parser.
-- Take arguments from config/maze2d.py without using the Parser
-- Comment out gym in preprocessing.py
-- Comment out d4rl and 23-25 and import gym at datasets/d4rl.py --> convert everthing to "import gymnasium as gym"
-- diffuser_test_new has the new gym robotics environment, diffuser_test_new_wo_gym is the last working version that does not have gym. (pip install gymnasium-robotics)
-- import gymnasium as gym (did not work on Windows) (Could not build wheels for mujoco, which is required to install pyproject.toml-based projects)
-- Switched to Colab
-- pip install mujoco and gymnasium
-- arrays.py update the device: DEVICE = 'cuda:0' to DEVICE = 'cpu' for now
-- Comment out #import mujoco_py as mjc in rendering.py! Do not install mujoco-py (a different thing from mujoco)
-- Get rid of d4rl too (d4rl.py line 23-25 comment out)
-- Changing the environment requires properties to be changed too. I get 'PointMazeEnv' object has no attribute 'maze_arr' and similar errors and they need to be modified according to the new library.
-- I commented out the MujocoRenderer class inside rendering.py because we do not use it and it uses the old mujoco binding (mujoco-py)
