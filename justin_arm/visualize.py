@@ -3,7 +3,8 @@ from turtle import color
 
 import matplotlib
 
-matplotlib.use("Agg")  # or 'Qt5Agg', depending on your system
+matplotlib.use("Qt5Agg")  # or 'Qt5Agg', depending on your system
+
 import os
 
 import matplotlib.pyplot as plt
@@ -13,9 +14,16 @@ from rokin import robots, vis
 
 from justin_arm.helper import interpolate_trajectories
 
-
 # First plot: 3D Path for the different joints over 20 Waypoints
 # Create a colormap
+
+
+def get_colors(num_colors):
+    # Generate a list of colors using a colormap
+    colormap = plt.get_cmap("inferno", num_colors)
+    return [colormap(i) for i in range(num_colors)]
+
+
 def plot_trajectory_per_frames(q_paths, savepath=os.getcwd(), name="default"):
     """
     Plots the trajectory of the 8 frames of JustinArm for a single path.
@@ -76,11 +84,15 @@ def plot_trajectory_per_frames(q_paths, savepath=os.getcwd(), name="default"):
     ax1.set_ylabel("Y")
     ax1.set_zlabel("Z")
     ax1.set_title("Trajectory of the 8 Frames of JustinArm")
-    plt.savefig(f"{savepath}/trajectory_per_frame_{name}.png")
+
+    plt.ion()
     plt.show()
+    plt.savefig(f"{savepath}/trajectory_per_frame_{name}.png")
 
 
-def plot_multiple_trajectories(q_paths, sampling_num=10):
+def plot_multiple_trajectories(
+    q_paths, sampling_num=10, savepath=os.getcwd(), name="default", colors=None
+):
     """
     Plots multiple trajectories of the end-effector given a sample number.
 
@@ -96,14 +108,19 @@ def plot_multiple_trajectories(q_paths, sampling_num=10):
     robot = robots.JustinArm07()
 
     # Get shape of q_paths array
+    if q_paths.ndim == 2:
+        q_paths = np.expand_dims(q_paths, axis=0)
     num_trajectories, waypoints, _ = q_paths.shape
-    colors = plt.cm.jet(np.linspace(0, 1, waypoints))
+    if colors is None:
+        colors = get_colors(num_trajectories)
 
     # Second plot: End-effector trajectory for multiple paths
     fig2 = plt.figure()
+    plt.ion()
+
     ax2 = fig2.add_subplot(111, projection="3d")
 
-    # Iterate over each path (20 paths)
+    # Iterate over each path
     for i in range(num_trajectories):
         x_coords = []
         y_coords = []
@@ -120,19 +137,29 @@ def plot_multiple_trajectories(q_paths, sampling_num=10):
         #     x_coords, y_coords, z_coords, c=[colors[i]] * len(x_coords), marker="o"
         # )
         ax2.plot(
-            x_coords, y_coords, z_coords, color=colors[i], label=f"Trajectory {i+1}"
+            x_coords,
+            y_coords,
+            z_coords,
+            color=colors[i],
+            label=f"Trajectory {i+1}",
+            linewidth=2.5,
         )
 
     # Add labels and legend
     ax2.set_xlabel("X")
     ax2.set_ylabel("Y")
     ax2.set_zlabel("Z")
-    ax2.set_title("Diffused end-effector trajectory for fixed start and end conditions")
-    plt.savefig("end_effector_trajectory.png")
+    ax2.set_title(
+        " Diffused End-Effector Trajectories\n for fixed conditions",
+        fontsize=18,
+    )
+    plt.savefig(f"{savepath}/q_values_{name}.pdf", dpi=300, bbox_inches="tight")
     plt.show()
 
 
-def plot_q_values_per_trajectory(q_paths, savepath=os.getcwd(), name="default"):
+def plot_q_values_per_trajectory(
+    q_paths, savepath=os.getcwd(), name="default", colors=None
+):
     """
     Plot the Q-values over the waypoints for each joint in the robot.
 
@@ -153,27 +180,25 @@ def plot_q_values_per_trajectory(q_paths, savepath=os.getcwd(), name="default"):
 
     num_paths, waypoints, joints = q_paths.shape
 
+    if colors is None:
+        colors = get_colors(num_paths)
+
     # Create subplots for each joint
     for j in range(joints):
         ax = axs[j]
-        ax.set_xlabel("Waypoints")
-        ax.set_ylabel(f"Q value of Joint {j + 1}")
         for i in range(num_paths):
-            ax.plot(q_paths[i, :, j], color="black", zorder=10)
+            ax.plot(q_paths[i, :, j], color=colors[i], zorder=10, linewidth=2.5)
             ax.scatter(
-                range(q_paths.shape[1]),
-                q_paths[i, :, j],
-                c=plt.cm.jet(np.linspace(0, 1, waypoints)),
-                zorder=10,
+                range(q_paths.shape[1]), q_paths[i, :, j], c=colors[i], zorder=10, s=20
             )
+            # Increase the size of the x and y scale numbers
 
     # Remove the 8th (extra) subplot
     fig3.delaxes(axs[-1])
-    ax.set_title("Diffused Q-values for 7DoF JustinArm")
+    fig3.suptitle("Diffused Q-Values for 7DOF", fontsize=25)
 
     # Adjust layout to prevent overlap
     plt.tight_layout()
     # Show the third plot
-    plt.savefig(f"{savepath}/q_values_{name}.png")
-
+    #     plt.savefig(f"{savepath}/q_values_{name}.png")
     plt.show()
