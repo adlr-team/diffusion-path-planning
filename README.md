@@ -39,14 +39,4 @@ To get started, follow these steps:
     ```shell
     poetry shell
     ```
-
-
-4. Add Dependencies (Optional): If you need to add new dependencies to your project, you can use the following command:
-    ```shell
-    poetry add <package-name>
-    ```
-
-4. Update Dependencies (Optional): To update the dependencies to the latest versions according to the constraints in your pyproject.toml file, use:
-    ```shell
-    poetry update
-    ```
+   
