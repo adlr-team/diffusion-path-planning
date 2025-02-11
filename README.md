@@ -20,23 +20,4 @@ We explored diffusion models for path planning in 2D and 3D environments. Initia
 </p>
 
 
-
-## Getting started
-
-To get started, follow these steps:
-
-1. Install Poetry (only for the first execution):
-    ```shell
-    pip install poetry
-    ```
-
-2. Install project dependencies (only for the first execution):
-    ```shell
-    poetry install
-    ```
-
-3. Activate the Virtual Environment:
-    ```shell
-    poetry shell
-    ```
    
